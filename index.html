@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Search Pollution Reports</title>
+
+    <!-- Bootstrap -->
+    <!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.13/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.1.1/css/responsive.dataTables.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.7/css/font-awesome.min.css">
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.13/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.1.1/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/fixedcolumns/3.2.2/js/dataTables.fixedColumns.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://use.fontawesome.com/a0a80592d4.js"></script>
+
+    <style>
+
+    #tbl-container {
+      padding: 50px;
+    }
+
+    #tbl-container {
+        height: 500px;
+        overflow: hidden !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    body, html{
+         height: 100%;
+     	background-repeat: no-repeat;
+     	<!-- background:url(https://i.ytimg.com/vi/4kfXjatgeEU/maxresdefault.jpg); -->
+     	font-family: 'Oxygen', sans-serif;
+    	    background-size: cover;
+    }
+
+    .main{
+     	margin:50px 15px;
+    }
+
+    h1.title {
+    	font-size: 50px;
+    	font-family: 'Passion One', cursive;
+    	font-weight: 400;
+    }
+
+    hr{
+    	width: 10%;
+    	color: #fff;
+    }
+
+    .form-group{
+    	margin-bottom: 15px;
+    }
+
+    label{
+    	margin-bottom: 15px;
+    }
+
+    input,
+    input::-webkit-input-placeholder {
+        font-size: 11px;
+        padding-top: 3px;
+    }
+
+
+    .form-control {
+        height: auto!important;
+    padding: 8px 12px !important;
+    }
+    .input-group {
+        -webkit-box-shadow: 0px 2px 5px 0px rgba(0,0,0,0.21)!important;
+        -moz-box-shadow: 0px 2px 5px 0px rgba(0,0,0,0.21)!important;
+        box-shadow: 0px 2px 5px 0px rgba(0,0,0,0.21)!important;
+    }
+    #button {
+        border: 1px solid #ccc;
+        margin-top: 28px;
+        padding: 6px 12px;
+        color: #666;
+        text-shadow: 0 1px #fff;
+        cursor: pointer;
+        -moz-border-radius: 3px 3px;
+        -webkit-border-radius: 3px 3px;
+        border-radius: 3px 3px;
+        -moz-box-shadow: 0 1px #fff inset, 0 1px #ddd;
+        -webkit-box-shadow: 0 1px #fff inset, 0 1px #ddd;
+        box-shadow: 0 1px #fff inset, 0 1px #ddd;
+        background: #f5f5f5;
+        background: -moz-linear-gradient(top, #f5f5f5 0%, #eeeeee 100%);
+        background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #f5f5f5), color-stop(100%, #eeeeee));
+        background: -webkit-linear-gradient(top, #f5f5f5 0%, #eeeeee 100%);
+        background: -o-linear-gradient(top, #f5f5f5 0%, #eeeeee 100%);
+        background: -ms-linear-gradient(top, #f5f5f5 0%, #eeeeee 100%);
+        background: linear-gradient(top, #f5f5f5 0%, #eeeeee 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f5f5f5', endColorstr='#eeeeee', GradientType=0);
+    }
+    .main-center{
+     	margin-top: 30px;
+     	margin: 0 auto;
+     	max-width: 400px;
+        padding: 10px 40px;
+    	background:#009edf;
+    	    color: #FFF;
+        text-shadow: none;
+    	-webkit-box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.31);
+    -moz-box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.31);
+    box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.31);
+
+    }
+    span.input-group-addon i {
+        color: #009edf;
+        font-size: 17px;
+    }
+
+    iframe {
+      width: 100%;
+      height: 600px;
+    }
+
+    .fditable td, th {
+      padding: 5px;
+      background-color: white;
+    }
+    .fditable th {
+      background-color: lightgrey;
+    }
+    .fditable table, th, td {
+      border: 1px solid black;
+    }
+    </style>
+  </head>
+  <body>
+    <script>
+
+      var dfi = null;
+      var bg = null;
+
+      function getColor(d) {
+        return d === null ? 'white' :
+               d > 94 ? '#C80815' :
+               d > 74 ? '#FF4040':
+               d > 49 ? 'orange':
+               d > 24 ? '#FCF75E':
+               d > 11 ? 'skyblue':
+               d > 0  ? '#ADDFAD' :
+                          'white';
+        }
+
+      $(document).ready(function() {
+
+        bg = getColor(dfi);
+        $('body').css('background-color', bg);
+
+        $('#submit').click(function(){
+
+          console.log('button clicked');
+
+          var T = $('#temp').val();
+          var H = $('#humidity').val();
+          var U = $('#wind').val();
+          var DF = $('#drought').val();
+
+          dfi = 2 * Math.exp(-0.45 + (0.987 * Math.log(DF)) + (0.0338 * T) - (0.0345 * H) + (0.0234 * U))
+
+          $('#dfi').html(dfi)
+          bg = getColor(dfi);
+          $('body').css('background-color', bg);
+
+        });
+
+		$.ajax({
+
+			url: "http://www.bom.gov.au/places/vic/st-andrews/forecast/detailed/#d2017-03-06",
+			type: 'GET',
+			success: function(result){
+				alert(result);
+			}
+
+		});
+
+      });
+
+    </script>
+  <div class="container">
+  <div class="row">
+    <div class="col-sm-6"
+    <!-- Form from http://bootsnipp.com/forms -->
+    <form class="form-horizontal">
+    <fieldset>
+
+    <!-- Form Name -->
+    <legend>Calulate Fire Danger Index</legend>
+
+    <!-- Text input-->
+    <div class="form-group">
+      <label class="col-md-4 control-label" for="temp">Temperature</label>
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-addon"><i class="fa fa-thermometer-4 fa" aria-hidden="true"></i></span>
+          <input id="temp" name="temp" type="text" placeholder="degrees celcius" class="form-control input-md" required="">
+        </div>
+      </div>
+    </div>
+
+    <!-- Text input-->
+    <div class="form-group">
+      <label class="col-md-4 control-label" for="humidity">Humidity</label>
+      <div class="col-md-5">
+        <div class="input-group">
+						<span class="input-group-addon"><i class="fa fa-compass fa" aria-hidden="true"></i></span>
+            <input id="humidity" name="humidity" type="text" placeholder="percent" class="form-control input-md" required="">
+        </div>
+      </div>
+    </div>
+
+    <!-- Text input-->
+    <div class="form-group">
+      <label class="col-md-4 control-label" for="wind">Windspeed</label>
+      <div class="col-md-5">
+        <div class="input-group">
+            <span class="input-group-addon"><i class="fa fa-flag-o fa" aria-hidden="true"></i></span>
+            <input id="wind" name="wind" type="text" placeholder="kilometers per hour" class="form-control input-md" required="">
+          </div>
+      </div>
+    </div>
+
+    <!-- Text input-->
+    <div class="form-group">
+      <label class="col-md-4 control-label" for="drought">Drought Factor</label>
+      <div class="col-md-5">
+        <div class="input-group">
+            <span class="input-group-addon"><i class="fa fa-sun-o fa" aria-hidden="true"></i></span>
+            <input id="drought" name="drought" type="text" placeholder="range 1 - 10" class="form-control input-md" required="">
+          </div>
+          <small><span class="help-block">* values calculated by the BOM</span></small>
+      </div>
+    </div>
+
+    <!-- Button -->
+    <div class="form-group">
+      <label class="col-md-4 control-label" for="submit"></label>
+      <div class="col-md-4">
+        <button type="button" id="submit" name="submit" class="btn btn-default">Submit</button>
+      </div>
+    </div>
+
+    </fieldset>
+    </form>
+  </div>
+  <!-- place dfi here -->
+  <div id="dfi" class="col-sm-3"></div>
+  <div class="col-sm-3">
+
+    <div>
+
+      <table class="fditable" align="right">
+      <caption>Fire danger rating (<a href="https://en.wikipedia.org/wiki/McArthur_Forest_Fire_Danger_Index">source</a>)</caption>
+      <tr>
+      <th rowspan="2">Category</th>
+      <th colspan="2">Fire Danger Index</th>
+      </tr>
+      <tr>
+      <th>Forest</th>
+      <th>Grassland</th>
+      </tr>
+      <tr>
+      <td style="background:#C80815"><b><span style="color:#FFFFFF;">Catastrophic (Code Red)</span></b></td>
+      <td>100 +</td>
+      <td>150 +</td>
+      </tr>
+      <tr>
+      <td style="background:#FF4040"><b>Extreme</b></td>
+      <td>75–99</td>
+      <td>100–149</td>
+      </tr>
+      <tr>
+      <td style="background:orange"><b>Severe</b></td>
+      <td>50–74</td>
+      <td>50–99</td>
+      </tr>
+      <tr>
+      <td style="background:#FCF75E"><b>Very High</b></td>
+      <td>25–49</td>
+      <td>25–49</td>
+      </tr>
+      <tr>
+      <td style="background:skyblue"><b>High</b></td>
+      <td>12–24</td>
+      <td>12–24</td>
+      </tr>
+      <tr>
+      <td style="background:#ADDFAD"><b>Low–Moderate</b></td>
+      <td>0–11</td>
+      <td>0–11</td>
+      </tr>
+      </table>
+
+    </div>
+  </div>
+  </div>
+    <div>
+      <iframe src="http://www.bom.gov.au/places/vic/st-andrews/forecast/detailed/#d2017-02-24">
+
+    </div>
+    </div>
+
+  </body>
+</html>
