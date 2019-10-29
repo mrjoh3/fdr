@@ -40,13 +40,15 @@ server <- function(input, output, session) {
              title == 'HIGH' ~ 'blue', #00adef',
              title == 'LOW-MODERATE' ~ 'green' #79c141'
            )) %>%
-    filter(!is.na(date))
+    filter(!is.na(date)) %>%
+    distinct()
   
   
   # get BOM data
   #wth <- get_current_weather('MELBOURNE AIRPORT')
   fc <- get_precis_forecast('VIC') %>%
-    filter(town == 'Melbourne') %>%
+    filter(town == 'Melbourne',
+           !is.na(minimum_temperature)) %>%
     mutate(date = as.Date(start_time_local)) %>%
     select(date, minimum_temperature:probability_of_precipitation)
   
@@ -60,7 +62,7 @@ server <- function(input, output, session) {
       width = 12,
       icon = icon('fire'),
       background_color = r$color, 
-      icon_background = 'red',
+      icon_background = 'info',
       gradient = FALSE,
       #src = r$item_link,
       fluidRow(
@@ -74,7 +76,7 @@ server <- function(input, output, session) {
           width = 6,
           argonInfoCard(
               title = r$precis, 
-              value = glue('{r$probability_of_precipitation}% chance of {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm rain'),
+              value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
               icon_background = r$color,
               icon = icon('cloud'),
               width = 12
