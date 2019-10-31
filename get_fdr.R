@@ -33,6 +33,11 @@ fc <- get_precis_forecast('VIC') %>%
   mutate(date = as.Date(start_time_local)) %>%
   select(date, minimum_temperature:probability_of_precipitation)
 
+# wind
+wurl <- 'http://www.bom.gov.au/places/vic/st-andrews/forecast/detailed/'
+read_html(wurl) %>%
+  html_table()[[5]] # 5 is wind table for today all  others are available
+
 # merge fdr and forecast
 df <- left_join(df, fc, by = 'date')
 
