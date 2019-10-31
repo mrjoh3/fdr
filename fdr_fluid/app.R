@@ -12,6 +12,7 @@ library(lubridate)
 library(stringr)
 library(glue)
 library(bomrang)
+library(ggplot2)
 
 ui <- shinyUI(fluidPage(
   title = 'CFA FDR and Weather for Central Region',
@@ -76,7 +77,21 @@ server <- function(input, output, session) {
     .[seq(5, length(.), 5)]%>%
     setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
     bind_rows(.id = 'date') %>% 
-    gather('time', 'value', -date, -At)
+    gather('time', 'value', -date, -At) %>%
+    mutate(date = as.Date(date),
+           time = lubridate::ymd_hm(glue('{date} {time}')),
+           value = ifelse(value == '–', NA, value))
+  
+  Map(function(n){
+    output[[glue('plot{n}')]] <- renderPlot({
+      d <- df[['date']][n]
+      wind %>%
+        filter(date == d,
+               At == 'Relative humidity (%)') %>%
+        ggplot(aes(x = time, y = as.numeric(value))) +
+        geom_line()
+    })
+  }, 1:nrow(df))
   
   render_days <- lapply(1:nrow(df), function(n){
     r <- df[n,]
@@ -89,7 +104,8 @@ server <- function(input, output, session) {
         column(
           width = 6,
           h2(r$title),
-          tags$a(href = r$item_link, 'view on CFA page')
+          tags$a(href = r$item_link, 'view on CFA page'),
+          plotOutput(glue('plot{n}'))
           #h1(r$item_title)
           #HTML(r$item_description)
         ),
