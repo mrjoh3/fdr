@@ -1,33 +1,38 @@
 
 library(shiny)
-library(argonDash)
-library(argonR)
+library(shinydashboard)
+library(shinythemes)
+library(shinyWidgets)
 
 library(tidyRSS)
+library(rvest)
 library(dplyr)
+library(tidyr)
 library(lubridate)
 library(stringr)
 library(glue)
 library(bomrang)
 
-ui <- argonDashPage(
+ui <- shinyUI(fluidPage(
+  title = 'CFA FDR and Weather for Central Region',
+  responsive = TRUE,
+  theme = shinytheme("superhero"),
   header = NULL,
-  body = argonDashBody(
-    #setShadow(class = "dropdown-menu")
-    uiOutput('days'),
-    h3('Fire Danger Ratings'),
-    fluidRow(
-      column(6,
-             h5('Forest Fire'),
-             tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
-      column(6,
-             h5('Grass Fire'),
-             tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
-    )
+  useShinydashboard(),
+  h1('CFA FDR and Weather for Central Region'),
+  fluidRow( 
+    uiOutput('days')
   ),
-  sidebar = NULL,
-  title = "DashboardPage"
-)
+  fluidRow(
+    h3('Fire Danger Ratings'),
+    column(6,
+           h5('Forest Fire'),
+           tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
+    column(6,
+           h5('Grass Fire'),
+           tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
+  )
+))
 
 server <- function(input, output, session) {
   
@@ -64,41 +69,48 @@ server <- function(input, output, session) {
   # merge fdr and forecast
   df <- left_join(df, fc, by = 'date')
   
+  # wind
+  wurl <- 'http://www.bom.gov.au/places/vic/st-andrews/forecast/detailed/'
+  wind <- read_html(wurl) %>%
+    html_table() %>%
+    .[seq(5, length(.), 5)]%>%
+    setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
+    bind_rows(.id = 'date') %>% 
+    gather('time', 'value', -date, -At)
+  
   render_days <- lapply(1:nrow(df), function(n){
     r <- df[n,]
-    argonCard(
-      #title = r$item_title,
+    box(
+      title = r$item_title,
       width = 12,
-      icon = icon('fire'),
-      background_color = r$color, 
-      icon_background = 'info',
-      gradient = TRUE,
-      shadow = TRUE,
-      shadow_size = 10,
-      #src = r$item_link,
+      solidHeader = TRUE,
+      background = r$color, 
       fluidRow(
         column(
           width = 6,
-          h1(r$title),
-          h1(r$item_title)
+          h2(r$title),
+          tags$a(href = r$item_link, 'view on CFA page')
+          #h1(r$item_title)
           #HTML(r$item_description)
-          ),
+        ),
         column(
           width = 6,
-          argonInfoCard(
-              title = r$precis, 
-              value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
-              icon_background = r$color,
-              icon = icon('cloud'),
-              width = 12
-            ),
-          argonInfoCard(
-              title = "Temperature", 
-              value = glue('{r$minimum_temperature} - {r$maximum_temperature} degrees C'),
-              icon_background = r$color,
-              icon = icon('thermometer-half'),
-              width = 12
-            )))
+          infoBox(
+            title = r$precis, 
+            value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
+            #color = r$color,
+            icon = icon('cloud'),
+            width = 12,
+            fill = TRUE 
+          ),
+          infoBox(
+            title = "Temperature", 
+            value = glue('{r$minimum_temperature} - {r$maximum_temperature} degrees C'),
+            #color = r$color,
+            icon = icon('thermometer-half'),
+            width = 12,
+            fill = TRUE 
+          )))
     )
   })
   
@@ -107,7 +119,7 @@ server <- function(input, output, session) {
   })
   
 }
-   
+
 
 
 
