@@ -13,6 +13,8 @@ library(stringr)
 library(glue)
 library(bomrang)
 library(ggplot2)
+library(emojifont)
+
 
 ui <- shinyUI(fluidPage(
   title = 'CFA FDR and Weather for Central Region',
@@ -25,14 +27,15 @@ ui <- shinyUI(fluidPage(
     uiOutput('days')
   ),
   fluidRow(
+    div(style = 'padding: 30px;',
     h3('Fire Danger Ratings'),
-    column(6,
-           h5('Forest Fire'),
-           tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
-    column(6,
-           h5('Grass Fire'),
-           tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
-  )
+    tabsetPanel(
+      tabPanel(h5('Forest Fire Index'),
+               tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
+      tabPanel(h5('Grassland Fire Index'),
+               tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
+    )
+  ))
 ))
 
 server <- function(input, output, session) {
@@ -85,6 +88,16 @@ server <- function(input, output, session) {
       ) %>%
     bind_rows(.id = 'date') %>% 
     gather('time', 'value', -date, -meas) %>%
+    filter(meas %in% c('Relative humidity (%)',
+                       'Air temperature (°C)',
+                       'Wind speed  km/hknots',
+                       'Forest fuel dryness factor',
+                       'Thunderstorms',
+                       'Rain',
+                       'Wind direction')) %>%
+    spread(meas, value) %>%
+    gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
+    # pivot_wide for all pivot_long for numeric
     mutate(date = as.Date(date),
            time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
            value = ifelse(value == '–', NA, value),
@@ -92,6 +105,9 @@ server <- function(input, output, session) {
                           substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
                           value),
            meas = gsub('knots', '', meas),
+           `Wind direction` = ifelse(meas != 'Wind speed  km/h', NA, `Wind direction`),
+           Thunderstorms = ifelse(meas == 'Air temperature (°C)' & Thunderstorms == 'Yes', 'fa-bolt', NA),
+           Rain = ifelse(meas == 'Relative humidity (%)' & Rain == 'Yes', 'fa-tint', NA),
            y_max = case_when(
              meas == 'Relative humidity (%)' ~ 100,
              meas == 'Air temperature (°C)' ~ 50,
@@ -103,8 +119,6 @@ server <- function(input, output, session) {
     output[[glue('plot{n}')]] <- renderPlot({
       d <- df[['date']][n]
       wind %>%
-        #group_by(time) %>%
-        # pivot_wide for all pivot_long for numeric
         filter(date == d,
                meas %in% c('Relative humidity (%)',
                            'Air temperature (°C)',
@@ -113,14 +127,22 @@ server <- function(input, output, session) {
         mutate(value = as.numeric(value)) %>%
         ggplot(aes(x = time, y = as.numeric(value))) +
         geom_line() +
+        geom_text(aes(label = `Wind direction`), #color = 'red'), 
+                  vjust = 0, nudge_y = 3, size = 3) +
+        geom_text(aes(label = fontawesome(Thunderstorms)), 
+                  family = 'fontawesome-webfont', size = 4,
+                  vjust = 0, nudge_y = 3) +
+        geom_text(aes(label = fontawesome(Rain)), 
+                  family = 'fontawesome-webfont', size = 4,
+                  vjust = 0, nudge_y = 4) +
         facet_wrap(~ meas, ncol = 2, scales = 'free_y') +
         geom_blank(aes(y = 0)) +
         geom_blank(aes(y = y_max)) +
         scale_x_datetime(date_breaks = '8 hour', date_labels = "%H:%M") +
         theme_minimal() +
         theme(
-          panel.background = element_rect(fill = "transparent",colour = NA),
-          plot.background = element_rect(fill = "transparent",colour = NA),
+          panel.background = element_rect(fill = "transparent", colour = NA),
+          plot.background = element_rect(fill = "transparent", colour = NA),
           panel.grid.minor.x=element_blank(),
           panel.grid.major.x=element_blank(),
           panel.grid.minor.y=element_blank()
