@@ -74,29 +74,66 @@ server <- function(input, output, session) {
   wurl <- 'http://www.bom.gov.au/places/vic/st-andrews/forecast/detailed/'
   wind <- read_html(wurl) %>%
     html_table() %>%
-    .[seq(5, length(.), 5)]%>%
-    setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
+    #.[seq(5, length(.), 5)]%>%
+    #setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
+    lapply(., function(df){
+      rename_at(df, vars(1), funs(sub('At|From','meas', .))) %>%
+      mutate_all(as.character)
+    }) %>%
+    setNames(
+      sort(rep(seq(Sys.Date(), length.out = length(.) / 5, by = "1 days"), 5))
+      ) %>%
     bind_rows(.id = 'date') %>% 
-    gather('time', 'value', -date, -At) %>%
+    gather('time', 'value', -date, -meas) %>%
     mutate(date = as.Date(date),
-           time = lubridate::ymd_hm(glue('{date} {time}')),
-           value = ifelse(value == '–', NA, value))
+           time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
+           value = ifelse(value == '–', NA, value),
+           value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
+                          substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
+                          value),
+           meas = gsub('knots', '', meas),
+           y_max = case_when(
+             meas == 'Relative humidity (%)' ~ 100,
+             meas == 'Air temperature (°C)' ~ 50,
+             meas == 'Wind speed  km/h' ~ 60,
+             meas == 'Forest fuel dryness factor' ~ 10
+           ))
   
   Map(function(n){
     output[[glue('plot{n}')]] <- renderPlot({
       d <- df[['date']][n]
       wind %>%
+        #group_by(time) %>%
+        # pivot_wide for all pivot_long for numeric
         filter(date == d,
-               At == 'Relative humidity (%)') %>%
+               meas %in% c('Relative humidity (%)',
+                           'Air temperature (°C)',
+                           'Wind speed  km/h',
+                           'Forest fuel dryness factor')) %>%
+        mutate(value = as.numeric(value)) %>%
         ggplot(aes(x = time, y = as.numeric(value))) +
-        geom_line()
-    })
+        geom_line() +
+        facet_wrap(~ meas, ncol = 2, scales = 'free_y') +
+        geom_blank(aes(y = 0)) +
+        geom_blank(aes(y = y_max)) +
+        scale_x_datetime(date_breaks = '8 hour', date_labels = "%H:%M") +
+        theme_minimal() +
+        theme(
+          panel.background = element_rect(fill = "transparent",colour = NA),
+          plot.background = element_rect(fill = "transparent",colour = NA),
+          panel.grid.minor.x=element_blank(),
+          panel.grid.major.x=element_blank(),
+          panel.grid.minor.y=element_blank()
+        ) +
+        labs(x = '', y = '')
+    }, height = 350, bg = "transparent")
   }, 1:nrow(df))
   
   render_days <- lapply(1:nrow(df), function(n){
     r <- df[n,]
     box(
-      title = r$item_title,
+      title = tags$div(r$item_title, 
+                       tags$a(href = r$item_link, 'view on CFA page')),
       width = 12,
       solidHeader = TRUE,
       background = r$color, 
@@ -104,13 +141,6 @@ server <- function(input, output, session) {
         column(
           width = 6,
           h2(r$title),
-          tags$a(href = r$item_link, 'view on CFA page'),
-          plotOutput(glue('plot{n}'))
-          #h1(r$item_title)
-          #HTML(r$item_description)
-        ),
-        column(
-          width = 6,
           infoBox(
             title = r$precis, 
             value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
@@ -126,7 +156,13 @@ server <- function(input, output, session) {
             icon = icon('thermometer-half'),
             width = 12,
             fill = TRUE 
-          )))
+          )
+          #h1(r$item_title)
+          #HTML(r$item_description)
+        ),
+        column(
+          width = 6,
+          plotOutput(glue('plot{n}'))))
     )
   })
   
