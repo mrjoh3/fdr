@@ -30,9 +30,9 @@ ui <- shinyUI(fluidPage(
     div(style = 'padding: 30px;',
     h3('Fire Danger Ratings'),
     tabsetPanel(
-      tabPanel(h5('Forest Fire Index'),
+      tabPanel(h5('Forest'),
                tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
-      tabPanel(h5('Grassland Fire Index'),
+      tabPanel(h5('Grassland'),
                tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
     )
   ))
@@ -153,9 +153,8 @@ server <- function(input, output, session) {
   
   render_days <- lapply(1:nrow(df), function(n){
     r <- df[n,]
-    box(
-      title = tags$div(r$item_title, 
-                       tags$a(href = r$item_link, 'view on CFA page')),
+    pbox <- box(
+      title = tags$a(href = r$item_link, 'view on CFA page'),
       width = 12,
       solidHeader = TRUE,
       background = r$color, 
@@ -186,10 +185,25 @@ server <- function(input, output, session) {
           width = 6,
           plotOutput(glue('plot{n}'))))
     )
+    
+    tags$div(class="panel panel-default",
+             tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
+                      style = glue('background-color: {r$color};'),
+                      tags$h4(class="panel-title",
+                              tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
+                                     tags$div(r$item_title, 
+                                              tags$br(),
+                                              r$title)))), 
+             tags$div(id=glue("collapse{n}"), class="panel-collapse collapse", role="tabpanel", `aria-labelledby`=glue("heading{n}"), #content div
+                      tags$div(class="panel-body",
+                        pbox
+                      ))  
+             )
   })
   
   output$days <- shiny::renderUI({
-    tagList(render_days)
+    tagList(tags$div(class="panel-group", id="accordion", role="tablist", `aria-multiselectable`="true",
+                     render_days))
   })
   
 }
