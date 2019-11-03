@@ -16,13 +16,28 @@ library(ggplot2)
 library(emojifont)
 
 
+mobileDetect <- function(inputId, value = 0) {
+  tagList(
+    singleton(tags$head(tags$script(src = "js/mobile.js"))),
+    tags$input(id = inputId,
+               class = "mobile-element",
+               type = "hidden")
+  )
+}
+
+
+
 ui <- shinyUI(fluidPage(
   title = 'CFA FDR and Weather for Central Region',
   responsive = TRUE,
   theme = shinytheme("superhero"),
   header = NULL,
   useShinydashboard(),
-  h1('CFA FDR and Weather for Central Region'),
+  mobileDetect('isMobile'),
+  tags$div(style = 'text-align: center;',
+    h1('CFA Fire Danger Rating and Weather'),
+    h5('for Central Region')
+    ),
   fluidRow( 
     uiOutput('days')
   ),
@@ -35,10 +50,18 @@ ui <- shinyUI(fluidPage(
       tabPanel(h5('Grassland'),
                tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
     )
-  ))
+  )),
+  fluidRow(
+    textOutput('isItMobile')
+  )
 ))
 
 server <- function(input, output, session) {
+  
+  # check for mobile device
+  output$isItMobile <- renderText({
+    ifelse(input$isMobile, "You are on a mobile device", "You are not on a mobile device")
+  })
   
   url <- 'https://www.cfa.vic.gov.au/documents/50956/50964/central-firedistrict_rss.xml'
   
@@ -135,7 +158,9 @@ server <- function(input, output, session) {
         geom_text(aes(label = fontawesome(Rain)), 
                   family = 'fontawesome-webfont', size = 4,
                   vjust = 0, nudge_y = 4) +
-        facet_wrap(~ meas, ncol = 2, scales = 'free_y') +
+        facet_wrap(~ meas, 
+                   ncol = ifelse(input$isMobile, 1, 2), 
+                   scales = 'free_y') +
         geom_blank(aes(y = 0)) +
         geom_blank(aes(y = y_max)) +
         scale_x_datetime(date_breaks = '8 hour', date_labels = "%H:%M") +
@@ -191,9 +216,12 @@ server <- function(input, output, session) {
                       style = glue('background-color: {r$color};'),
                       tags$h4(class="panel-title",
                               tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
-                                     tags$div(r$item_title, 
-                                              tags$br(),
-                                              r$title)))), 
+                                     fluidRow(
+                                       column(9, r$item_title),
+                                       column(3, r$title)
+                                       )
+                                     )
+                              )), 
              tags$div(id=glue("collapse{n}"), class="panel-collapse collapse", role="tabpanel", `aria-labelledby`=glue("heading{n}"), #content div
                       tags$div(class="panel-body",
                         pbox
