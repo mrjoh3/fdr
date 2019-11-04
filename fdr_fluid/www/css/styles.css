@@ -1,0 +1,7 @@
+.c3-chart-text .c3-text {
+  font-family: 'FontAwesome';
+  font-size: 22px;
+}
+.c3-target-value text {
+   fill: orange !important;
+}
