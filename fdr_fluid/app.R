@@ -19,7 +19,7 @@ library(c3)
 
 
 source('utils.R')
-readRDS('towns.rds')
+towns <- readRDS('towns.rds')
 
 cfa__lu <- gsub(' ', '', tolower(unique(towns$cfa_tfb))) %>% as.list() %>%
   setNames(unique(towns$cfa_tfb))
