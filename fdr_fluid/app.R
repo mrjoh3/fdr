@@ -19,7 +19,10 @@ library(c3)
 
 source('utils.R')
 
-
+fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
+                                          src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.1.0/"),
+                                          script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
+)
 
 
 ui <- shinyUI(fluidPage(
@@ -30,10 +33,11 @@ ui <- shinyUI(fluidPage(
   useShinydashboard(),
   mobileDetect('isMobile'),
   tags$div(style = 'text-align: center;',
-    h1('CFA Fire Danger Rating and Weather'),
-    h5('for Central Region')
+    h1('CFA Fire Danger Rating and Weather', icon('fire',class = 'orange')),
+    tags$hr()
+    #h5('for Central Region') # could make dynamic
     ),
-  includeCSS('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'),
+  fontawesomeDep,
   includeCSS('www/css/styles.css'),
   tags$style(HTML(".c3-chart-text .c3-text {
                       font-family: 'FontAwesome';
@@ -41,9 +45,28 @@ ui <- shinyUI(fluidPage(
                     }
                     .c3-target-value text {
                        fill: orange !important;
-                    }")),
+                    }
+                    .orange {
+                       color: orange;
+                    }
+                  ")),
   fluidRow( 
     uiOutput('days')
+  ),
+  fluidRow(column(6,
+                  selectizeInput('cfa', 'CFA Region',
+                                 choices = list(Central = 'central',
+                                                Mallee = 'mallee',
+                                                Wimmera = 'wimmera',
+                                                `South West` = 'southwest',
+                                                `Northern Country` = 'northerncountry',
+                                                `North Central` = 'northcentral',
+                                                `North East` = 'northeast',
+                                                `West and South Gippsland` = 'westandsouthgippsland',
+                                                `East Gippsland` = 'eastgippsland'),
+                                 selected = 'central')
+  ),
+  column(6)
   ),
   fluidRow(
     div(style = 'padding: 30px;',
@@ -67,81 +90,103 @@ server <- function(input, output, session) {
   output$isItMobile <- renderText({
     ifelse(input$isMobile, "You are on a mobile device", "You are not on a mobile device")
   })
+
+  dat <- reactiveValues(df = data.frame(),
+                        wind = data.frame())
   
-  url <- 'https://www.cfa.vic.gov.au/documents/50956/50964/central-firedistrict_rss.xml'
-  
-  df <- tidyfeed(url) %>%
-    mutate(date = as.Date(gsub('Today, |Tomorrow, ', '', item_title), '%a, %d %b %Y'),
-           title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
-           start = date,
-           end = date + days(1),
-           day = wday(start, label = TRUE),
-           week = isoweek(start),
-           rendering = 'background',
-           color = case_when(
-             title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
-             title == 'EXTREME' ~ 'red', #ee2e24',
-             title == 'SEVERE' ~ 'orange', #f89829',
-             title == 'VERY HIGH' ~ 'yellow', #fff002',
-             title == 'HIGH' ~ 'blue', #00adef',
-             title == 'LOW-MODERATE' ~ 'green' #79c141'
-           )) %>%
-    filter(!is.na(date)) %>%
-    distinct()
-  
-  
-  # get BOM data
-  #wth <- get_current_weather('MELBOURNE AIRPORT')
-  fc <- get_precis_forecast('VIC') %>%
-    filter(town == 'Melbourne',
-           !is.na(minimum_temperature)) %>%
-    mutate(date = as.Date(start_time_local)) %>%
-    select(date, minimum_temperature:probability_of_precipitation)
-  
-  # merge fdr and forecast
-  df <- left_join(df, fc, by = 'date')
-  
-  # wind
-  wurl <- 'http://www.bom.gov.au/places/vic/st-andrews/forecast/detailed/'
-  wind <- read_html(wurl) %>%
-    html_table() %>%
-    #.[seq(5, length(.), 5)]%>%
-    #setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
-    lapply(., function(df){
-      rename_at(df, vars(1), ~ sub('At|From','meas', .)) %>%
-      mutate_all(as.character)
-    }) %>%
-    setNames(
-      sort(rep(seq(Sys.Date(), length.out = length(.) / 5, by = "1 days"), 5))
+  # get data 
+  observe({
+    
+    cfa <- input$cfa
+    
+    # check for url parameters
+    query <- parseQueryString(session$clientData$url_search)
+    if (!is.null(query[['cfa']])) {
+      cfa <- query[['cfa']]
+      updateSelectizeInput(session, "cfa", selected = query[['cfa']])
+    }
+    
+    
+    # get BOM forecast data
+    #wth <- get_current_weather('MELBOURNE AIRPORT')
+    fc <- get_precis_forecast('VIC') %>%
+      filter(town == 'Melbourne',
+             !is.na(minimum_temperature)) %>%
+      mutate(date = as.Date(start_time_local)) %>%
+      select(date, minimum_temperature:probability_of_precipitation)
+    
+    df <- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{cfa}-firedistrict_rss.xml') %>%
+        tidyfeed(.) %>%
+        mutate(date = as.Date(gsub('Today, |Tomorrow, ', '', item_title), '%a, %d %b %Y'),
+               title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
+               start = date,
+               end = date + days(1),
+               day = wday(start, label = TRUE),
+               week = isoweek(start),
+               rendering = 'background',
+               color = case_when(
+                 title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
+                 title == 'EXTREME' ~ 'red', #ee2e24',
+                 title == 'SEVERE' ~ 'orange', #f89829',
+                 title == 'VERY HIGH' ~ 'yellow', #fff002',
+                 title == 'HIGH' ~ 'blue', #00adef',
+                 title == 'LOW-MODERATE' ~ 'green' #79c141'
+               )) %>%
+        filter(!is.na(date)) %>%
+        distinct()
+
+    # merge fdr and forecast
+    df <- left_join(df, fc, by = 'date')
+
+    isolate({dat$df = df})
+    
+    # wind
+    wurl <- 'http://www.bom.gov.au/places/vic/st-andrews/forecast/detailed/'
+    wind <- read_html(wurl) %>%
+      html_table() %>%
+      #.[seq(5, length(.), 5)]%>%
+      #setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
+      lapply(., function(df){
+        rename_at(df, vars(1), ~ sub('At|From','meas', .)) %>%
+          mutate_all(as.character)
+      }) %>%
+      setNames(
+        sort(rep(seq(Sys.Date(), length.out = length(.) / 5, by = "1 days"), 5))
       ) %>%
-    bind_rows(.id = 'date') %>% 
-    gather('time', 'value', -date, -meas) %>%
-    filter(meas %in% c('Relative humidity (%)',
-                       'Air temperature (°C)',
-                       'Wind speed  km/hknots',
-                       'Forest fuel dryness factor',
-                       'Thunderstorms',
-                       'Rain',
-                       'Wind direction')) %>%
-    spread(meas, value) %>%
-    gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
-    # pivot_wide for all pivot_long for numeric
-    mutate(date = as.Date(date),
-           time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
-           value = ifelse(value == '–', NA, value),
-           value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
-                          substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
-                          value),
-           meas = gsub('knots', '', meas),
-           `Wind direction` = ifelse(meas != 'Wind speed  km/h', NA, `Wind direction`),
-           Thunderstorms = ifelse(meas == 'Air temperature (°C)' & Thunderstorms == 'Yes', 'fa-bolt', NA),
-           Rain = ifelse(meas == 'Relative humidity (%)' & Rain == 'Yes', 'fa-tint', NA),
-           y_max = case_when(
-             meas == 'Relative humidity (%)' ~ 100,
-             meas == 'Air temperature (°C)' ~ 50,
-             meas == 'Wind speed  km/h' ~ 60,
-             meas == 'Forest fuel dryness factor' ~ 10
-           ))
+      bind_rows(.id = 'date') %>% 
+      gather('time', 'value', -date, -meas) %>%
+      filter(meas %in% c('Relative humidity (%)',
+                         'Air temperature (°C)',
+                         'Wind speed  km/hknots',
+                         'Forest fuel dryness factor',
+                         'Thunderstorms',
+                         'Rain',
+                         'Wind direction')) %>%
+      spread(meas, value) %>%
+      gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
+      # pivot_wide for all pivot_long for numeric
+      mutate(date = as.Date(date),
+             time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
+             value = ifelse(value == '–', NA, value),
+             value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
+                            substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
+                            value),
+             meas = gsub('knots', '', meas),
+             `Wind direction` = ifelse(meas != 'Wind speed  km/h', NA, `Wind direction`),
+             Thunderstorms = ifelse(meas == 'Air temperature (°C)' & Thunderstorms == 'Yes', 'fa-bolt', NA),
+             Rain = ifelse(meas == 'Relative humidity (%)' & Rain == 'Yes', 'fa-tint', NA),
+             y_max = case_when(
+               meas == 'Relative humidity (%)' ~ 100,
+               meas == 'Air temperature (°C)' ~ 50,
+               meas == 'Wind speed  km/h' ~ 60,
+               meas == 'Forest fuel dryness factor' ~ 10
+             ))
+    
+    isolate({dat$wind = wind})
+    
+    
+  })
+  
   
   # add ggplot elements uses facet_wrap 
   # Map(function(n){
@@ -183,98 +228,80 @@ server <- function(input, output, session) {
   # }, 1:nrow(df))
   
   # add c3 elements need 4 plots per row
-  Map(function(n){
-    label <- df[['date']][n]
-    cats <- unique(wind$meas)
-    c3_grid_server(input, output, session, wind, label, cats)
-  }, 1:nrow(df))
-  
-  
-  render_days <- lapply(1:nrow(df), function(n){
-    r <- df[n,]
-    pbox <- box(
-      title = tags$a(href = r$item_link, 'view on CFA page'),
-      width = 12,
-      solidHeader = TRUE,
-      background = r$color, 
-      fluidRow(
-        column(
-          width = 6,
-          h2(r$title),
-          infoBox(
-            title = r$precis, 
-            value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
-            #color = r$color,
-            icon = icon('cloud'),
-            width = 12,
-            fill = TRUE 
+  observe({
+    Map(function(n){
+      label <- dat$df[['date']][n]
+      cats <- unique(dat$wind$meas)
+      c3_grid_server(input, output, session, dat$wind, label, cats)
+    }, 1:nrow(dat$df))
+  })
+
+  # render UI for dropdown panels
+  observe({
+    
+    render_days <- lapply(1:nrow(dat$df), function(n){
+      r <- dat$df[n,]
+      pbox <- box(
+        title = tags$a(href = r$item_link, 'view on CFA page'),
+        width = 12,
+        solidHeader = TRUE,
+        background = r$color, 
+        fluidRow(
+          column(
+            width = 6,
+            h2(r$title),
+            infoBox(
+              title = r$precis, 
+              value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
+              #color = r$color,
+              icon = icon('cloud'),
+              width = 12,
+              fill = TRUE 
+            ),
+            infoBox(
+              title = "Temperature", 
+              value = glue('{r$minimum_temperature} - {r$maximum_temperature} degrees C'),
+              #color = r$color,
+              icon = icon('thermometer-half'),
+              width = 12,
+              fill = TRUE 
+            )
+            #h1(r$item_title)
+            #HTML(r$item_description)
           ),
-          infoBox(
-            title = "Temperature", 
-            value = glue('{r$minimum_temperature} - {r$maximum_temperature} degrees C'),
-            #color = r$color,
-            icon = icon('thermometer-half'),
-            width = 12,
-            fill = TRUE 
-          )
-          #h1(r$item_title)
-          #HTML(r$item_description)
-        ),
-        column(
-          width = 6,
-          #plotOutput(glue('plot{n}'))
-          c3_grid_UI(r$date, unique(wind$meas))
+          column(
+            width = 6,
+            #plotOutput(glue('plot{n}'))
+            c3_grid_UI(r$date, unique(wind$meas))
           ))
-    )
-    
-    tags$div(class="panel panel-default",
-             tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
-                      style = glue('background-color: {r$color};'),
-                      tags$h4(class="panel-title",
-                              tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
-                                     fluidRow(
-                                       column(9, r$item_title),
-                                       column(3, r$title)
+      )
+      
+      tags$div(class="panel panel-default",
+               tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
+                        style = glue('background-color: {r$color};'),
+                        tags$h4(class="panel-title",
+                                tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
+                                       fluidRow(
+                                         column(9, r$item_title),
+                                         column(3, r$title)
                                        )
-                                     )
-                              )), 
-             tags$div(id=glue("collapse{n}"), class="panel-collapse collapse", role="tabpanel", `aria-labelledby`=glue("heading{n}"), #content div
-                      tags$div(class="panel-body",
-                        pbox
-                      ))  
-             )
-  })
-  
-  # c3 label icon test
-  output$test <- renderC3({
-    #select(tmp, value, Thunderstorms) %>% c3(y = 'value', labels = list(format = list(value = htmlwidgets::JS('function(v,id,i,j){if (Thunderstorms.v === 1) return "\uf1ec"}'))))
-    d <- df[['date']][1]
-    c3df <- wind %>%
-      filter(date == d,
-             meas == 'Air temperature (°C)') %>%
-      mutate(Thunderstorms = ifelse(is.na(Thunderstorms), 0 , 1),
-             time = as.character(time))
+                                )
+                        )), 
+               tags$div(id=glue("collapse{n}"), class="panel-collapse collapse", role="tabpanel", `aria-labelledby`=glue("heading{n}"), #content div
+                        tags$div(class="panel-body",
+                                 pbox
+                        ))  
+      )
+    })
     
-    select(c3df, time, value) %>% 
-      arrange(time) %>%
-      c3(x = 'time', y = 'value', xFormat = '%Y-%m-%d %H:%M:%S', labels = list(
-        format = list(
-          value = htmlwidgets::JS('function(v,id,i,j){',
-                                  sprintf('var a = [%s];', paste(c3df[['Thunderstorms']], collapse = ',')),
-                                  'return (a[i] === 1) ? "\uf0e7" : ""}')
-          )
-        )) %>% 
-      xAxis(type = 'timeseries') %>% 
-      tickAxis('y', count = 4, format = htmlwidgets::JS('d3.format(".2n")')) %>% 
-      tickAxis('x', culling = list(max = 3)) %>%
-      legend(hide = TRUE)
+    output$days <- shiny::renderUI({
+      tagList(tags$div(class="panel-group", id="accordion", role="tablist", `aria-multiselectable`="true",
+                       render_days))
+    })
+    
   })
-  
-  output$days <- shiny::renderUI({
-    tagList(tags$div(class="panel-group", id="accordion", role="tablist", `aria-multiselectable`="true",
-                     render_days))
-  })
-  
+
+
 }
 
 
