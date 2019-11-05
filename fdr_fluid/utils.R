@@ -74,8 +74,10 @@ c3_grid_server <- function(input, output, session, wind, label, cats){
         c3(x = 'time', xFormat = '%Y-%m-%d %H:%M:%S', 
            y = 'value', 
            labels = labels, height = 80) %>% 
-        c3_chart_size(height = 100) %>% 
-        xAxis(type = 'timeseries') %>% 
+        c3_chart_size(height = 120) %>% 
+        xAxis(type = 'timeseries') %>%
+        #yAxis(max = c3df$y_max[1]) %>%
+        yAxis(max = max(c3df$value) * 1.2) %>% # give space for icons
         tickAxis('x', culling = list(max = 3)) %>% 
         tickAxis('y', count = 4, format = htmlwidgets::JS('d3.format(".2n")')) %>% 
         legend(hide = TRUE)
