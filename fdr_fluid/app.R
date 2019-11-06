@@ -31,6 +31,7 @@ fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
                                           script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
 )
 
+precis_w <- get_precis_forecast('VIC')
 
 ui <- shinyUI(fluidPage(
   title = 'CFA FDR and Weather for Central Region',
@@ -103,7 +104,9 @@ server <- function(input, output, session) {
   })
 
   dat <- reactiveValues(df = data.frame(),
-                        wind = data.frame())
+                        wind = data.frame(),
+                        location = 'st-andrews',
+                        cfa = 'central')
   
   # get nearest forcast town
   # bomrang::sweep_for_forecast_towns(c(-38, 147))
@@ -120,17 +123,10 @@ server <- function(input, output, session) {
   # })
   
   observe({    # check for url parameters
+      
+    print(1)
     
       query <- parseQueryString(session$clientData$url_search)
-      
-      # cfa <- input$cfa # default
-      location <- input$location # default
-      
-      # if (!is.null(query[['cfa']])) {
-      #   cfa <- query[['cfa']]
-      #   updateSelectizeInput(session, "cfa", selected = query[['cfa']])
-      # }
-      # isolate({dat$cfa = cfa})
       
       if (!is.null(query[['location']])) {
         location <- query[['location']]
@@ -138,123 +134,143 @@ server <- function(input, output, session) {
                              choices = town_lu, 
                              selected = query[['location']],
                              server = TRUE)
+        isolate({dat$location = location})
       }
       
-      isolate({dat$location = location})
       
-      cfa_region <- filter(towns, town_val == location) %>% 
-            pull(cfa_tfb) %>%
-            tolower() %>%
-            gsub(' ', '', .)
-      isolate({dat$cfa = cfa_region})
       
-    })
-  
-  # watch button to update qry and get new location
-  observeEvent(input$new, {
-    updateQueryString(glue('?location={dat$location}'), mode = "push")
-  })
+    }, priority = 2)
   
   observe({
-    output$subtitle <- renderText({
-      glue('{dat$location} is in the {dat$cfa} Total Fire Ban District')
-    })
-  })
+    
+    print(2)
+    
+    cfa_region <- filter(towns, town_val == location) %>% 
+      pull(cfa_tfb) %>%
+      tolower() %>%
+      gsub(' ', '', .)
+    isolate({dat$cfa = cfa_region})
+    
+  }, priority = 1)
+  
+  # watch button to update qry and get new location
+  observeEvent(input$location, {
+    updateQueryString(glue('?location={dat$location}'), mode = "push")
+  }, ignoreInit = TRUE, priority = -1)
+  
+
   
   # get data 
   observe({
-
-    # define and check urls exist
-    wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/')
-    furl <- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml')
-
-    # test location available
-    if (RCurl::url.exists(wurl) & RCurl::url.exists(furl)) {
+    
+    print(3)
+    
+    withProgress(message = 'Loading', value = 0, {
       
-      # get BOM forecast data
-      #wth <- get_current_weather('MELBOURNE AIRPORT')
-      fc <- get_precis_forecast('VIC') %>%
-        filter(town == 'Melbourne',
-               !is.na(minimum_temperature)) %>%
-        mutate(date = as.Date(start_time_local)) %>%
-        select(date, minimum_temperature:probability_of_precipitation)
+      output$subtitle <- renderText({
+        glue('{dat$location} is in the {dat$cfa} Total Fire Ban District')
+      })
       
-      df <- furl %>%
-        tidyfeed(.) %>%
-        mutate(date = as.Date(gsub('Today, |Tomorrow, ', '', item_title), '%a, %d %b %Y'),
-               title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
-               start = date,
-               end = date + days(1),
-               day = wday(start, label = TRUE),
-               week = isoweek(start),
-               rendering = 'background',
-               color = case_when(
-                 title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
-                 title == 'EXTREME' ~ 'red', #ee2e24',
-                 title == 'SEVERE' ~ 'orange', #f89829',
-                 title == 'VERY HIGH' ~ 'yellow', #fff002',
-                 title == 'HIGH' ~ 'blue', #00adef',
-                 title == 'LOW-MODERATE' ~ 'green' #79c141'
-               )) %>%
-        filter(!is.na(date)) %>%
-        distinct()
+      # define and check urls exist
+      wurl <<- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/')
+      furl <<- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml')
       
-      # merge fdr and forecast
-      df <- left_join(df, fc, by = 'date')
-      
-      isolate({dat$df = df})
-      
-      
-      wind <- read_html(wurl) %>%
-        html_table() %>%
-        #.[seq(5, length(.), 5)]%>%
-        #setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
-        lapply(., function(df){
-          rename_at(df, vars(1), ~ sub('At|From','meas', .)) %>%
-            mutate_all(as.character)
-        }) %>%
-        setNames(
-          sort(rep(seq(Sys.Date(), length.out = length(.) / 5, by = "1 days"), 5))
-        ) %>%
-        bind_rows(.id = 'date') %>% 
-        gather('time', 'value', -date, -meas) %>%
-        filter(meas %in% c('Relative humidity (%)',
-                           'Air temperature (°C)',
-                           'Wind speed  km/hknots',
-                           'Forest fuel dryness factor',
-                           'Thunderstorms',
-                           'Rain',
-                           'Wind direction')) %>%
-        spread(meas, value) %>%
-        gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
-        # pivot_wide for all pivot_long for numeric
-        mutate(date = as.Date(date),
-               time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
-               value = ifelse(value == '–', NA, value),
-               value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
-                              substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
-                              value),
-               meas = gsub('knots', '', meas),
-               `Wind direction` = ifelse(meas != 'Wind speed  km/h', NA, `Wind direction`),
-               Thunderstorms = ifelse(meas == 'Air temperature (°C)' & Thunderstorms == 'Yes', 'fa-bolt', NA),
-               Rain = ifelse(meas == 'Relative humidity (%)' & Rain == 'Yes', 'fa-tint', NA),
-               y_max = case_when(
-                 meas == 'Relative humidity (%)' ~ 100,
-                 meas == 'Air temperature (°C)' ~ 50,
-                 meas == 'Wind speed  km/h' ~ 60,
-                 meas == 'Forest fuel dryness factor' ~ 10
-               ))
-      
-      isolate({dat$wind = wind})
-      
-      # add c3 elements need 4 plots per row
-      Map(function(n){
-        label <- dat$df[['date']][n]
-        cats <- unique(dat$wind$meas)
-        c3_grid_server(input, output, session, dat$wind, label, cats)
-      }, 1:nrow(dat$df))
-      
-      # render UI for dropdown panels
+      # test location available
+      if (RCurl::url.exists(wurl)) { #  & RCurl::url.exists(furl)
+        
+        incProgress(.20, 'Precis Weather Forecast')
+        
+        # get BOM forecast data
+        #wth <- get_current_weather('MELBOURNE AIRPORT')
+        fc <- precis_w %>%
+          filter(town == 'Melbourne',
+                 !is.na(minimum_temperature)) %>%
+          mutate(date = as.Date(start_time_local)) %>%
+          select(date, minimum_temperature:probability_of_precipitation)
+        
+        incProgress(.20, 'CFA Fire Danger')
+        
+        df <- furl %>%
+          tidyfeed(.) %>%
+          mutate(date = as.Date(gsub('Today, |Tomorrow, ', '', item_title), '%a, %d %b %Y'),
+                 title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
+                 start = date,
+                 end = date + days(1),
+                 day = wday(start, label = TRUE),
+                 week = isoweek(start),
+                 rendering = 'background',
+                 color = case_when(
+                   title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
+                   title == 'EXTREME' ~ 'red', #ee2e24',
+                   title == 'SEVERE' ~ 'orange', #f89829',
+                   title == 'VERY HIGH' ~ 'yellow', #fff002',
+                   title == 'HIGH' ~ 'blue', #00adef',
+                   title == 'LOW-MODERATE' ~ 'green' #79c141'
+                 )) %>%
+          filter(!is.na(date)) %>%
+          distinct()
+        
+        # merge fdr and forecast
+        df <- left_join(df, fc, by = 'date')
+        
+        isolate({dat$df = df})
+        
+        incProgress(.20, '3hr Weather Forecast')
+        
+        wind <- read_html(wurl) %>%
+          html_table() %>%
+          #.[seq(5, length(.), 5)]%>%
+          #setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
+          lapply(., function(df){
+            rename_at(df, vars(1), ~ sub('At|From','meas', .)) %>%
+              mutate_all(as.character)
+          }) %>%
+          setNames(
+            sort(rep(seq(Sys.Date(), length.out = length(.) / 5, by = "1 days"), 5))
+          ) %>%
+          bind_rows(.id = 'date') %>% 
+          gather('time', 'value', -date, -meas) %>%
+          filter(meas %in% c('Relative humidity (%)',
+                             'Air temperature (°C)',
+                             'Wind speed  km/hknots',
+                             'Forest fuel dryness factor',
+                             'Thunderstorms',
+                             'Rain',
+                             'Wind direction')) %>%
+          spread(meas, value) %>%
+          gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
+          # pivot_wide for all pivot_long for numeric
+          mutate(date = as.Date(date),
+                 time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
+                 value = ifelse(value == '–', NA, value),
+                 value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
+                                substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
+                                value),
+                 meas = gsub('knots', '', meas),
+                 `Wind direction` = ifelse(meas != 'Wind speed  km/h', NA, `Wind direction`),
+                 Thunderstorms = ifelse(meas == 'Air temperature (°C)' & Thunderstorms == 'Yes', 'fa-bolt', NA),
+                 Rain = ifelse(meas == 'Relative humidity (%)' & Rain == 'Yes', 'fa-tint', NA),
+                 y_max = case_when(
+                   meas == 'Relative humidity (%)' ~ 100,
+                   meas == 'Air temperature (°C)' ~ 50,
+                   meas == 'Wind speed  km/h' ~ 60,
+                   meas == 'Forest fuel dryness factor' ~ 10
+                 ))
+        
+        isolate({dat$wind = wind})
+        
+        incProgress(.20, '3hr Weather plotting')
+        
+        # add c3 elements need 4 plots per row
+        Map(function(n){
+          label <- dat$df[['date']][n]
+          cats <- unique(dat$wind$meas)
+          c3_grid_server(input, output, session, dat$wind, label, cats)
+        }, 1:nrow(dat$df))
+        
+        incProgress(.20, 'Render Output')
+        
+        # render UI for dropdown panels
         render_days <- lapply(1:nrow(dat$df), function(n){
           r <- dat$df[n,]
           pbox <- box(
@@ -315,20 +331,26 @@ server <- function(input, output, session) {
                            render_days))
         })
         
+        
+      } else {
+        
+        incProgress(1, 'Something Went Wrong')
+        
+        print('location not found')
+        print(dat$location)
+        shinyalert(title = 'Error', 
+                   text = 'The entered location could not be found',
+                   type = 'error'
+        )
+        
+      }
       
-    } else {
       
-      print('location not found')
-      shinyalert(title = 'Error', 
-                 text = 'The entered location could not be found',
-                 type = 'error'
-                 )
-      
-    }
-
+    })
     
-  })
-  
+      
+    }, priority = 0)
+
   
   # add ggplot elements uses facet_wrap 
   # Map(function(n){
