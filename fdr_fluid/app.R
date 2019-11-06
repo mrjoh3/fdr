@@ -145,7 +145,7 @@ server <- function(input, output, session) {
     
     print(2)
     
-    cfa_region <- filter(towns, town_val == location) %>% 
+    cfa_region <- filter(towns, town_val == dat$location) %>% 
       pull(cfa_tfb) %>%
       tolower() %>%
       gsub(' ', '', .)
