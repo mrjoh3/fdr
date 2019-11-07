@@ -98,7 +98,8 @@ server <- function(input, output, session) {
   })
 
   dat <- reactiveValues(df = data.frame(),
-                        wind = data.frame())
+                        wind = data.frame(),
+                        load = TRUE)
   
   observe({    # check for url parameters
       
@@ -107,12 +108,13 @@ server <- function(input, output, session) {
       location <- input$location
       query <- parseQueryString(session$clientData$url_search)
       
-      if (!is.null(query[['location']])) {
+      if (!is.null(query[['location']]) & dat$load) {
         location <- query[['location']]
         updateSelectizeInput(session, "location", 
                              choices = town_lu, 
                              selected = query[['location']])
         print('into if')
+        isolate({dat$load <- FALSE})
       }
       
       isolate({dat$location = location})
@@ -134,8 +136,7 @@ server <- function(input, output, session) {
   # watch button to update qry and get new location
   observeEvent(input$location, {
     print(4)
-    location = input$location
-    isolate({dat$location = location})
+    isolate({dat$location = input$location})
     #updateQueryString(glue('?location={location}'), mode = "push", session)
     #updateQueryString(glue(''), mode = "push", session)
   }, ignoreInit = TRUE, priority = 3)
