@@ -31,7 +31,7 @@ fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
                                           script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
 )
 
-precis_w <- get_precis_forecast('VIC')
+#precis_w <- get_precis_forecast('VIC')
 
 ui <- shinyUI(fluidPage(
   title = 'CFA FDR and Weather for Central Region',
@@ -64,20 +64,14 @@ ui <- shinyUI(fluidPage(
   ),
   fluidRow(
     column(4#,
-          # selectizeInput('cfa', 'CFA Region',
-          #                choices = NULL)
+           #tags$img(src = 'www/fdr-scale.gif', width = '95%')
     ),
     column(4,
            selectizeInput('location', 'Nearest Town', 
                           choices = town_lu, 
                           selected = 'st-andrews')
            ),
-    column(4,
-           style = 'padding-top: 20px;',
-           shinyWidgets::actionBttn(
-             'new', 'New Location', icon('crosshairs'), 
-             style = 'material-flat', block = TRUE, color = 'primary'
-           ))
+    column(4)
   ),
   fluidRow(
     div(style = 'padding: 30px;',
@@ -104,40 +98,24 @@ server <- function(input, output, session) {
   })
 
   dat <- reactiveValues(df = data.frame(),
-                        wind = data.frame(),
-                        location = 'st-andrews',
-                        cfa = 'central')
-  
-  # get nearest forcast town
-  # bomrang::sweep_for_forecast_towns(c(-38, 147))
-  
-  # observeEvent(input$location, {
-  #   cfa_region <- filter(towns, town_name == input$location) %>% 
-  #     pull(cfa_tfb) %>%
-  #     tolower() %>% 
-  #     gsub(' ', '', .)
-  #   updateSelectizeInput(session, "cfa", 
-  #                        choices = cfa_regions, 
-  #                        selected = cfa_region[1],
-  #                        server = TRUE)
-  # })
+                        wind = data.frame())
   
   observe({    # check for url parameters
       
-    print(1)
-    
+      print(1)
+      
+      location <- input$location
       query <- parseQueryString(session$clientData$url_search)
       
       if (!is.null(query[['location']])) {
         location <- query[['location']]
         updateSelectizeInput(session, "location", 
                              choices = town_lu, 
-                             selected = query[['location']],
-                             server = TRUE)
-        isolate({dat$location = location})
+                             selected = query[['location']])
+        print('into if')
       }
       
-      
+      isolate({dat$location = location})
       
     }, priority = 2)
   
@@ -176,8 +154,8 @@ server <- function(input, output, session) {
       })
       
       # define and check urls exist
-      wurl <<- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/')
-      furl <<- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml')
+      wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/')
+      furl <- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml')
       
       # test location available
       if (RCurl::url.exists(wurl)) { #  & RCurl::url.exists(furl)
@@ -185,12 +163,7 @@ server <- function(input, output, session) {
         incProgress(.20, 'Precis Weather Forecast')
         
         # get BOM forecast data
-        #wth <- get_current_weather('MELBOURNE AIRPORT')
-        fc <- precis_w %>%
-          filter(town == 'Melbourne',
-                 !is.na(minimum_temperature)) %>%
-          mutate(date = as.Date(start_time_local)) %>%
-          select(date, minimum_temperature:probability_of_precipitation)
+        fc <- get_precis(dat$location)
         
         incProgress(.20, 'CFA Fire Danger')
         
@@ -278,17 +251,17 @@ server <- function(input, output, session) {
         render_days <- lapply(1:nrow(dat$df), function(n){
           r <- dat$df[n,]
           pbox <- box(
-            title = tags$a(href = r$item_link, 'view on CFA page'),
+            #title = tags$a(href = r$item_link, 'view on CFA page'),
             width = 12,
             solidHeader = TRUE,
             background = r$color, 
             fluidRow(
               column(
                 width = 6,
-                h2(r$title),
+                #h2(r$title),
                 infoBox(
-                  title = r$precis, 
-                  value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
+                  title = 'Rain', 
+                  value = glue('{r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'),
                   #color = r$color,
                   icon = icon('cloud'),
                   width = 12,
@@ -296,12 +269,13 @@ server <- function(input, output, session) {
                 ),
                 infoBox(
                   title = "Temperature", 
-                  value = glue('{r$minimum_temperature} - {r$maximum_temperature} degrees C'),
+                  value = glue('{r$minimum_temperature} - {r$maximum_temperature}'),
                   #color = r$color,
                   icon = icon('thermometer-half'),
                   width = 12,
                   fill = TRUE 
-                )
+                ),
+                tags$p(r$precis)
                 #h1(r$item_title)
                 #HTML(r$item_description)
               ),
