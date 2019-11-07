@@ -183,6 +183,14 @@ server <- function(input, output, session) {
                    title == 'VERY HIGH' ~ 'yellow', #fff002',
                    title == 'HIGH' ~ 'blue', #00adef',
                    title == 'LOW-MODERATE' ~ 'green' #79c141'
+                 ),
+                 fdr_color = case_when(
+                   title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
+                   title == 'EXTREME' ~ '#ee2e24',
+                   title == 'SEVERE' ~ '#f89829',
+                   title == 'VERY HIGH' ~ '#fff002',
+                   title == 'HIGH' ~ '#00adef',
+                   title == 'LOW-MODERATE' ~ '#79c141'
                  )) %>%
           filter(!is.na(date)) %>%
           distinct()
@@ -288,7 +296,7 @@ server <- function(input, output, session) {
           
           tags$div(class="panel panel-default",
                    tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
-                            style = glue('background-color: {r$color};'),
+                            style = glue('background-color: {r$fdr_color};'),
                             tags$h4(class="panel-title",
                                     tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                            fluidRow(
@@ -299,7 +307,8 @@ server <- function(input, output, session) {
                             )), 
                    tags$div(id=glue("collapse{n}"), class="panel-collapse collapse", role="tabpanel", `aria-labelledby`=glue("heading{n}"), #content div
                             tags$div(class="panel-body",
-                                     pbox
+                                     pbox,
+                                     tags$a(href = r$item_link, 'view on CFA page')
                             ))  
           )
         })
