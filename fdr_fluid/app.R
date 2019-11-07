@@ -155,8 +155,12 @@ server <- function(input, output, session) {
   
   # watch button to update qry and get new location
   observeEvent(input$location, {
-    updateQueryString(glue('?location={dat$location}'), mode = "push")
-  }, ignoreInit = TRUE, priority = -1)
+    print(4)
+    location = input$location
+    isolate({dat$location = location})
+    #updateQueryString(glue('?location={location}'), mode = "push", session)
+    #updateQueryString(glue(''), mode = "push", session)
+  }, ignoreInit = TRUE, priority = 3)
   
 
   
@@ -347,7 +351,6 @@ server <- function(input, output, session) {
       
       
     })
-    
       
     }, priority = 0)
 
