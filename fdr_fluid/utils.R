@@ -87,3 +87,57 @@ c3_grid_server <- function(input, output, session, wind, label, cats){
 }
 
 
+get_precis <- function(location){
+  
+  url <- glue('http://www.bom.gov.au/places/vic/{location}/forecast/')
+  
+  doc <- read_html(url) 
+  
+  days <- doc %>%
+    html_nodes('.day')
+  
+  dates <- seq(Sys.Date(), length.out = length(days), by = 1)
+  
+  df <- lapply(1:length(days), function(n){
+
+    dd <- days[[n]] %>%
+      html_nodes('dd')
+    
+    img <- dd %>% html_node('img') %>% html_attr('src')
+    area <- days[[n]] %>% html_node('h3') %>% html_text()
+    precis <- days[[n]]  %>% html_node('p') %>% html_text()
+    names <- dd %>% html_attr('class') 
+    
+    names[is.na(names)] <- 'X'
+    
+    dl <- dd %>% 
+      html_text() %>%
+      setNames(names) %>% # sometimes there are extra fields to drop
+      as.list()
+    
+    dl[['X']] <- NULL
+      
+    dl %>%
+      as_tibble() %>%
+      mutate(image = glue('http://www.bom.gov.au/{img[1]}'),
+             area = area,
+             precis = precis,
+             date = dates[n]) %>%
+      separate(amt, c('lower_precipitation_limit', 'upper_precipitation_limit'), sep = ' to ', remove = TRUE) %>%
+      mutate(upper_precipitation_limit = gsub(' mm', '', upper_precipitation_limit)) %>%
+      mutate_at(c('lower_precipitation_limit', 'upper_precipitation_limit'), as.numeric)
+    
+  }) %>% bind_rows() %>%
+    select(date,
+           minimum_temperature = min,
+           maximum_temperature = max,
+           lower_precipitation_limit,
+           upper_precipitation_limit,
+           probability_of_precipitation = pop,
+           precis,
+           area,
+           image)
+  
+  return(df)
+  
+}
