@@ -14,6 +14,8 @@ library(stringr)
 library(glue)
 library(bomrang)
 library(ggplot2)
+library(ggdark)
+library(colortools)
 library(emojifont)
 library(c3)
 
@@ -199,8 +201,6 @@ server <- function(input, output, session) {
         # merge fdr and forecast
         df <- left_join(df, fc, by = 'date')
         
-        isolate({dat$df = df})
-        
         incProgress(.20, '3hr Weather Forecast')
         
         wind <- read_html(wurl) %>%
@@ -243,6 +243,22 @@ server <- function(input, output, session) {
                    meas == 'Forest fuel dryness factor' ~ 10
                  ))
         
+        wind_agg <- wind %>%
+          filter(meas %in% c('Relative humidity (%)',
+                             'Air temperature (°C)',
+                             'Wind speed  km/h',
+                             'Forest fuel dryness factor')) %>%
+          mutate(meas = tolower(word(meas, 1))) %>%
+          group_by(date, meas) %>%
+          summarise(max = max(as.numeric(value), na.rm = TRUE),
+                    min = min(as.numeric(value), na.rm = TRUE)) %>% 
+          pivot_longer(c(max,min)) %>%
+          pivot_wider(date, c(meas, name))
+        
+        df <- df %>% 
+          left_join(wind_agg)
+        
+        isolate({dat$df = df})
         isolate({dat$wind = wind})
         
         incProgress(.20, '3hr Weather plotting')
@@ -265,25 +281,64 @@ server <- function(input, output, session) {
             solidHeader = TRUE,
             background = r$color, 
             fluidRow(
+              tags$head(tags$style(HTML('.info-box {min-height: 45px; filter: brightness(0.95);} ',
+                                        '.info-box-icon {height: 45px; line-height: 45px; width: 50px; padding-bottom: 10px; font-size: 15px;} ',
+                                        '.info-box-icon i {font-size: 30px; padding-top: 7px;} ',
+                                        '.info-box-content {padding-top: 0px; padding-bottom: 0px; margin-left: 50px;} ',
+                                        '.info-box-content span {font-size: 14px; padding-top: 2px; filter: brightness(2);}'))),
               column(
                 width = 6,
-                #h2(r$title),
-                infoBox(
-                  title = 'Rain', 
-                  value = glue('{r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'),
-                  #color = r$color,
-                  icon = icon('cloud'),
-                  width = 12,
-                  fill = TRUE 
-                ),
-                infoBox(
-                  title = "Temperature", 
-                  value = glue('{r$minimum_temperature} - {r$maximum_temperature}'),
-                  #color = r$color,
-                  icon = icon('thermometer-half'),
-                  width = 12,
-                  fill = TRUE 
-                ),
+                fluidRow(column(6,
+                                infoBox(
+                                  title = 'Rain', 
+                                  value = glue('{r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'),
+                                  color = r$color,
+                                  icon = icon('cloud'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "Temperature", 
+                                  value = glue('{r$minimum_temperature} - {r$maximum_temperature} °C'),
+                                  color = r$color,
+                                  icon = icon('thermometer-half'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "Fuel Dryness", 
+                                  value = glue('{r$forest_min} - {r$forest_max}'),
+                                  color = r$color,
+                                  icon = icon('tree'),
+                                  width = 12,
+                                  fill = TRUE 
+                                )),
+                         column(6,
+                                infoBox(
+                                  title = 'Wind', 
+                                  value = glue('{r$wind_min} - {r$wind_max} km/h'),
+                                  color = r$color,
+                                  icon = icon('flag'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "Humidity", 
+                                  value = glue('{r$relative_min} - {r$relative_max} %'),
+                                  color = r$color,
+                                  icon = icon('burn'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "UV", 
+                                  value = glue('{r$uv}'),
+                                  color = r$color,
+                                  icon = icon('sun'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ))
+                         ),
                 tags$p(r$precis)
                 #h1(r$item_title)
                 #HTML(r$item_description)
@@ -299,6 +354,7 @@ server <- function(input, output, session) {
                    tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
                             style = glue('background-color: {r$fdr_color};'),
                             tags$h4(class="panel-title",
+                                    style=glue("color: {tetradic(r$color)[3]};"),
                                     tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                            fluidRow(
                                              column(9, r$item_title),
