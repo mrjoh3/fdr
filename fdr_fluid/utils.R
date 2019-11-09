@@ -106,6 +106,7 @@ get_precis <- function(location){
     img <- dd %>% html_node('img') %>% html_attr('src')
     area <- days[[n]] %>% html_node('h3') %>% html_text()
     precis <- days[[n]]  %>% html_node('p') %>% html_text()
+    uv <- days[[n]]  %>% html_node('p.alert') %>% html_text()
     names <- dd %>% html_attr('class') 
     
     names[is.na(names)] <- 'X'
@@ -122,10 +123,12 @@ get_precis <- function(location){
       mutate(image = glue('http://www.bom.gov.au/{img[1]}'),
              area = area,
              precis = precis,
+             uv = uv, 
              date = dates[n]) %>%
       separate(amt, c('lower_precipitation_limit', 'upper_precipitation_limit'), sep = ' to ', remove = TRUE) %>%
-      mutate(upper_precipitation_limit = gsub(' mm', '', upper_precipitation_limit)) %>%
-      mutate_at(c('lower_precipitation_limit', 'upper_precipitation_limit'), as.numeric)
+      mutate(upper_precipitation_limit = gsub(' mm', '', upper_precipitation_limit),
+             uv = unlist(str_extract_all(uv, '[1-9]')) %>% .[length(.)]) %>%
+      mutate_at(c('lower_precipitation_limit', 'upper_precipitation_limit', 'uv'), as.numeric) 
     
   }) %>% bind_rows() %>%
     select(date,
@@ -135,9 +138,22 @@ get_precis <- function(location){
            upper_precipitation_limit,
            probability_of_precipitation = pop,
            precis,
+           uv,
            area,
-           image)
+           image) %>%
+    mutate_at(c("minimum_temperature", "maximum_temperature"), ~ as.numeric(gsub(' °C', '', .))) # done here as min sometimes missing
   
   return(df)
   
 }
+
+
+contrast <- function(col){
+  
+  r <- col2rgb(col) %>% as.vector(.)
+  
+  cont <- (Math.round(rgb[1] * 299) + Math.round(rgb[2] * 587) + Math.round(rgb[3] * 114)) / 1000
+  rn <- rgb(255 - r[1],
+            255 - r[2],
+            255 - r[3], 0)
+} 
