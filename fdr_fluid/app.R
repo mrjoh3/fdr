@@ -158,12 +158,13 @@ server <- function(input, output, session) {
     withProgress(message = 'Loading', value = 0, {
       
       output$subtitle <- renderText({
-        glue('{dat$location} is in the {dat$cfa} Total Fire Ban District')
+        glue('{tools::toTitleCase(gsub("-"," ", dat$location))} is in the {tools::toTitleCase(dat$cfa)} Total Fire Ban District')
       })
       
       # define and check urls exist
-      wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/')
-      furl <- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml')
+      wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/') # 3hr detailed forecast
+      surl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/') # simple forecast
+      furl <- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml') # cfa tfb district forecast
       
       # test location available
       if (RCurl::url.exists(wurl)) { #  & RCurl::url.exists(furl)
@@ -171,7 +172,10 @@ server <- function(input, output, session) {
         incProgress(.20, 'Precis Weather Forecast')
         
         # get BOM forecast data
-        fc <- get_precis(dat$location)
+        fc <- get_precis(surl)
+        
+        # get latest weather
+        latest <- get_latest(fc$obs_url[1])
         
         incProgress(.20, 'CFA Fire Danger')
         
@@ -232,7 +236,7 @@ server <- function(input, output, session) {
           gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
           # pivot_wide for all pivot_long for numeric
           mutate(date = as.Date(date),
-                 time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
+                 time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AEST')),
                  value = ifelse(value == '–', NA, value),
                  value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
                                 substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
@@ -246,7 +250,8 @@ server <- function(input, output, session) {
                    meas == 'Air temperature (°C)' ~ 50,
                    meas == 'Wind speed  km/h' ~ 60,
                    meas == 'Forest fuel dryness factor' ~ 10
-                 ))
+                 ),
+                 value = as.numeric(value))
         
         wind_agg <- wind %>%
           filter(meas %in% c('Relative humidity (%)',
@@ -263,6 +268,11 @@ server <- function(input, output, session) {
         df <- df %>% 
           left_join(wind_agg)
         
+        # add fdr colors to plotting data then bind latest observations
+        wind <- wind %>%
+          left_join(select(df, date, fdr_color), by = 'date') %>%
+          bind_rows(latest)
+        
         isolate({dat$df = df})
         isolate({dat$wind = wind})
         
@@ -275,7 +285,7 @@ server <- function(input, output, session) {
           c3_grid_server(input, output, session, dat$wind, label, cats)
         }, 1:nrow(dat$df))
         
-        incProgress(.20, 'Render Output')
+        incProgress(.15, 'Render Charts')
         
         # render UI for dropdown panels
         render_days <- lapply(1:nrow(dat$df), function(n){
@@ -359,7 +369,7 @@ server <- function(input, output, session) {
                    tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
                             style = glue('background-color: {r$fdr_color};'),
                             tags$h4(class="panel-title",
-                                    style=glue("color: {tetradic(r$color)[3]};"),
+                                    style=glue("color: {tetradic(r$color, plot = FALSE)[3]};"),
                                     tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                            fluidRow(
                                              column(9, r$item_title),

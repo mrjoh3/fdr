@@ -18,14 +18,14 @@ c3_grid_UI <- function(label, cats){
   
   tagList(
     fluidRow(column(6,
-                    h4(cats[1]),
+                    h5(cats[1]),
                     c3Output(glue("{cats_L[1]}{gsub('-', '', label)}", height = 80)),
-                    h4(cats[2]),
+                    h5(cats[2]),
                     c3Output(glue("{cats_L[2]}{gsub('-', '', label)}", height = 80))),
              column(6,
-                    h4(cats[3]),
+                    h5(cats[3]),
                     c3Output(glue("{cats_L[3]}{gsub('-', '', label)}", height = 80)),
-                    h4(cats[4]),
+                    h5(cats[4]),
                     c3Output(glue("{cats_L[4]}{gsub('-', '', label)}", height = 80)))
              )
   )
@@ -45,11 +45,16 @@ c3_grid_server <- function(input, output, session, wind, label, cats){
       c3df <- wind %>%
         filter(date == label,
                meas == cats[pl]) %>%
+        arrange(time) %>%
         mutate(value = as.numeric(value),
                time = as.character(time),
                Thunderstorms = ifelse(is.na(Thunderstorms), 0 , 1),
                Rain = ifelse(is.na(Rain), 0 , 1)) %>%
-        arrange(time)
+        fill(fdr_color, y_max, .direction = 'downup')
+
+      if (cats[pl] != 'Forest fuel dryness factor') {
+        c3d4 <- c3df %>% filter(!is.na(value))
+      }
       
       labels <- list()
       
@@ -68,28 +73,38 @@ c3_grid_server <- function(input, output, session, wind, label, cats){
                                     'return (a[i] === 1) ? "\uf043" : ""}')))
       }
       
-      #print(c3df$value)
+      #print(colnames(c3df))
       
-      select(c3df, time, value) %>% 
+      chart <- select(c3df, time, value) %>% 
         c3(x = 'time', xFormat = '%Y-%m-%d %H:%M:%S', 
            y = 'value', 
            labels = labels, height = 80) %>% 
-        c3_chart_size(height = 120) %>% 
+        c3_chart_size(height = 110) %>% 
         xAxis(type = 'timeseries') %>%
         #yAxis(max = c3df$y_max[1]) %>%
         yAxis(max = max(c3df$value) * 1.2) %>% # give space for icons
         tickAxis('x', culling = list(max = 3)) %>% 
-        tickAxis('y', count = 4, format = htmlwidgets::JS('d3.format(".2n")')) %>% 
-        legend(hide = TRUE)
+        tickAxis('y', count = 4, format = htmlwidgets::JS('d3.format(".0f")')) %>% 
+        legend(hide = TRUE) %>%
+        c3_colour(c(colortools::opposite(c3df$fdr_color[1], plot = FALSE)[2],
+                    'black'))
+      
+      if (nrow(c3df) > 10) {
+        chart <- chart %>%
+          grid('x', 
+               show = F, 
+               lines = data.frame(value = as.character(c3df$now[1]), 
+                                  text = 'Now'))
+      }
+        
+      chart
     })
   }, 1:length(cats))
   
 }
 
 
-get_precis <- function(location){
-  
-  url <- glue('http://www.bom.gov.au/places/vic/{location}/forecast/')
+get_precis <- function(url){
   
   doc <- read_html(url) 
   
@@ -97,6 +112,8 @@ get_precis <- function(location){
     html_nodes('.day')
   
   dates <- seq(Sys.Date(), length.out = length(days), by = 1)
+  
+  obs_url <- doc %>% html_nodes('.obs a') %>% html_attr('href')
   
   df <- lapply(1:length(days), function(n){
 
@@ -120,7 +137,7 @@ get_precis <- function(location){
       
     dl %>%
       as_tibble() %>%
-      mutate(image = glue('http://www.bom.gov.au/{img[1]}'),
+      mutate(image = glue('http://www.bom.gov.au/images/meteye/weather_icons/large/{basename(img[1])}'),
              area = area,
              precis = precis,
              uv = uv, 
@@ -141,19 +158,42 @@ get_precis <- function(location){
            uv,
            area,
            image) %>%
-    mutate_at(c("minimum_temperature", "maximum_temperature"), ~ as.numeric(gsub(' °C', '', .))) # done here as min sometimes missing
-  
+    mutate_at(c("minimum_temperature", "maximum_temperature"), ~ as.numeric(gsub(' °C', '', .))) %>% # done here as min sometimes missing
+    mutate(obs_url = glue('http://www.bom.gov.au{obs_url}'))
+    
   return(df)
   
 }
 
 
-contrast <- function(col){
+get_latest <- function(url){
   
-  r <- col2rgb(col) %>% as.vector(.)
+  doc <- read_html(url)
   
-  cont <- (Math.round(rgb[1] * 299) + Math.round(rgb[2] * 587) + Math.round(rgb[3] * 114)) / 1000
-  rn <- rgb(255 - r[1],
-            255 - r[2],
-            255 - r[3], 0)
-} 
+  dt <- doc %>% html_nodes('h2.pointer span') %>% html_text() %>%
+    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.')
+  
+  tbls <- doc %>% html_table()
+  tdy <- tbls[[3]]
+  
+  # check that time at top of table is current
+  
+  # add date
+  tdy %>%
+    mutate(date = as.Date(dt),
+           time = as.POSIXct(glue('{date} {`Time (AEDT)`}'), format = '%Y-%m-%d %I:%M %p', tz = 'AEDT'),
+           now = dt) %>%
+    select(date, time, now,
+           `Air temperature (°C)` = `Temp (°C)`,
+           `Relative humidity (%)` = `Humidity(%)`,
+           `Wind speed  km/h` = `Wind Speed (km/h) (knots)`) %>%
+    mutate(wind = as.character(`Wind speed  km/h`),
+           wind = substr(wind, 1, ceiling(nchar(wind)/2)),
+           `Wind speed  km/h` = as.numeric(wind)) %>%
+    select(-wind) %>%
+    pivot_longer(c(`Air temperature (°C)`,
+                   `Relative humidity (%)`,
+                   `Wind speed  km/h`),
+                 "meas")
+  
+}
