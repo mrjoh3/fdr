@@ -87,8 +87,13 @@ ui <- shinyUI(fluidPage(
         )
   )),
   fluidRow(
-    textOutput('isItMobile'),
-    c3Output('test')
+    column(12,
+           tags$hr(),
+           uiOutput('sources'),
+           tags$hr()
+           )
+    #textOutput('isItMobile'),
+    #c3Output('test')
   )
 ))
 
@@ -373,6 +378,33 @@ server <- function(input, output, session) {
         output$days <- shiny::renderUI({
           tagList(tags$div(class="panel-group", id="accordion", role="tablist", `aria-multiselectable`="true",
                            render_days))
+        })
+        
+        
+        incProgress(.05, 'Data Sources')
+        
+        output$sources <- renderUI({
+          
+          tagList(
+            h3('Data Sources'),
+              p('All data is sourced when you first load the page via a combination of RSS feeds and webscraping. ',
+                'The links here are the reliable sources, this page merely groups useful information from these sources.'),
+              h4('CFA'),
+                h5('Fire Danger Ratings:'),
+                  tags$a(href = glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district'),
+                         glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district')),
+                h5('Fire Danger Ratings (RSS):'),
+                  tags$a(href = furl, furl),
+              h4('BOM'),
+                h5('Extended Forecast (7 day):'),
+                tags$a(href = surl, surl),
+              h5('Detailed 3-hourly Forecast:'),
+                tags$a(href = wurl, wurl),
+              h5('Current and Past Weather:'),
+                tags$a(href = fc$obs_url[1], fc$obs_url[1])
+            
+          )
+          
         })
         
         
