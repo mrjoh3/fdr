@@ -14,6 +14,8 @@ library(stringr)
 library(glue)
 library(bomrang)
 library(ggplot2)
+library(ggdark)
+library(colortools)
 library(emojifont)
 library(c3)
 
@@ -31,17 +33,17 @@ fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
                                           script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
 )
 
-precis_w <- get_precis_forecast('VIC')
+#precis_w <- get_precis_forecast('VIC')
 
 ui <- shinyUI(fluidPage(
-  title = 'CFA FDR and Weather for Central Region',
+  title = 'FDR and Weather',
   responsive = TRUE,
   theme = shinytheme("superhero"),
   header = NULL,
   useShinydashboard(),
   mobileDetect('isMobile'),
   tags$div(style = 'text-align: center;',
-    h1('CFA Fire Danger Rating and Weather', icon('fire',class = 'orange')),
+    h1('Fire Danger Ratings and Weather', icon('fire',class = 'orange')),
     h5(textOutput('subtitle')),
     tags$hr()
     ),
@@ -64,20 +66,14 @@ ui <- shinyUI(fluidPage(
   ),
   fluidRow(
     column(4#,
-          # selectizeInput('cfa', 'CFA Region',
-          #                choices = NULL)
+           #tags$img(src = 'www/fdr-scale.gif', width = '95%')
     ),
     column(4,
            selectizeInput('location', 'Nearest Town', 
                           choices = town_lu, 
                           selected = 'st-andrews')
            ),
-    column(4,
-           style = 'padding-top: 20px;',
-           shinyWidgets::actionBttn(
-             'new', 'New Location', icon('crosshairs'), 
-             style = 'material-flat', block = TRUE, color = 'primary'
-           ))
+    column(4)
   ),
   fluidRow(
     div(style = 'padding: 30px;',
@@ -91,8 +87,13 @@ ui <- shinyUI(fluidPage(
         )
   )),
   fluidRow(
-    textOutput('isItMobile'),
-    c3Output('test')
+    column(12,
+           tags$hr(),
+           uiOutput('sources'),
+           tags$hr()
+           )
+    #textOutput('isItMobile'),
+    #c3Output('test')
   )
 ))
 
@@ -105,39 +106,25 @@ server <- function(input, output, session) {
 
   dat <- reactiveValues(df = data.frame(),
                         wind = data.frame(),
-                        location = 'st-andrews',
-                        cfa = 'central')
-  
-  # get nearest forcast town
-  # bomrang::sweep_for_forecast_towns(c(-38, 147))
-  
-  # observeEvent(input$location, {
-  #   cfa_region <- filter(towns, town_name == input$location) %>% 
-  #     pull(cfa_tfb) %>%
-  #     tolower() %>% 
-  #     gsub(' ', '', .)
-  #   updateSelectizeInput(session, "cfa", 
-  #                        choices = cfa_regions, 
-  #                        selected = cfa_region[1],
-  #                        server = TRUE)
-  # })
+                        load = TRUE)
   
   observe({    # check for url parameters
       
-    print(1)
-    
+      print(1)
+      
+      location <- input$location
       query <- parseQueryString(session$clientData$url_search)
       
-      if (!is.null(query[['location']])) {
+      if (!is.null(query[['location']]) & dat$load) {
         location <- query[['location']]
         updateSelectizeInput(session, "location", 
                              choices = town_lu, 
-                             selected = query[['location']],
-                             server = TRUE)
-        isolate({dat$location = location})
+                             selected = query[['location']])
+        print('into if')
+        isolate({dat$load <- FALSE})
       }
       
-      
+      isolate({dat$location = location})
       
     }, priority = 2)
   
@@ -155,8 +142,11 @@ server <- function(input, output, session) {
   
   # watch button to update qry and get new location
   observeEvent(input$location, {
-    updateQueryString(glue('?location={dat$location}'), mode = "push")
-  }, ignoreInit = TRUE, priority = -1)
+    print(4)
+    isolate({dat$location = input$location})
+    #updateQueryString(glue('?location={location}'), mode = "push", session)
+    #updateQueryString(glue(''), mode = "push", session)
+  }, ignoreInit = TRUE, priority = 3)
   
 
   
@@ -168,12 +158,13 @@ server <- function(input, output, session) {
     withProgress(message = 'Loading', value = 0, {
       
       output$subtitle <- renderText({
-        glue('{dat$location} is in the {dat$cfa} Total Fire Ban District')
+        glue('{tools::toTitleCase(gsub("-"," ", dat$location))} is in the {tools::toTitleCase(dat$cfa)} Total Fire Ban District')
       })
       
       # define and check urls exist
-      wurl <<- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/')
-      furl <<- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml')
+      wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/') # 3hr detailed forecast
+      surl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/') # simple forecast
+      furl <- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml') # cfa tfb district forecast
       
       # test location available
       if (RCurl::url.exists(wurl)) { #  & RCurl::url.exists(furl)
@@ -181,12 +172,10 @@ server <- function(input, output, session) {
         incProgress(.20, 'Precis Weather Forecast')
         
         # get BOM forecast data
-        #wth <- get_current_weather('MELBOURNE AIRPORT')
-        fc <- precis_w %>%
-          filter(town == 'Melbourne',
-                 !is.na(minimum_temperature)) %>%
-          mutate(date = as.Date(start_time_local)) %>%
-          select(date, minimum_temperature:probability_of_precipitation)
+        fc <- get_precis(surl)
+        
+        # get latest weather
+        latest <- get_latest(fc$obs_url[1])
         
         incProgress(.20, 'CFA Fire Danger')
         
@@ -206,14 +195,20 @@ server <- function(input, output, session) {
                    title == 'VERY HIGH' ~ 'yellow', #fff002',
                    title == 'HIGH' ~ 'blue', #00adef',
                    title == 'LOW-MODERATE' ~ 'green' #79c141'
+                 ),
+                 fdr_color = case_when(
+                   title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
+                   title == 'EXTREME' ~ '#ee2e24',
+                   title == 'SEVERE' ~ '#f89829',
+                   title == 'VERY HIGH' ~ '#fff002',
+                   title == 'HIGH' ~ '#00adef',
+                   title == 'LOW-MODERATE' ~ '#79c141'
                  )) %>%
           filter(!is.na(date)) %>%
           distinct()
         
         # merge fdr and forecast
         df <- left_join(df, fc, by = 'date')
-        
-        isolate({dat$df = df})
         
         incProgress(.20, '3hr Weather Forecast')
         
@@ -241,7 +236,7 @@ server <- function(input, output, session) {
           gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
           # pivot_wide for all pivot_long for numeric
           mutate(date = as.Date(date),
-                 time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AET')),
+                 time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AEST')),
                  value = ifelse(value == '–', NA, value),
                  value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
                                 substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
@@ -255,8 +250,30 @@ server <- function(input, output, session) {
                    meas == 'Air temperature (°C)' ~ 50,
                    meas == 'Wind speed  km/h' ~ 60,
                    meas == 'Forest fuel dryness factor' ~ 10
-                 ))
+                 ),
+                 value = as.numeric(value))
         
+        wind_agg <- wind %>%
+          filter(meas %in% c('Relative humidity (%)',
+                             'Air temperature (°C)',
+                             'Wind speed  km/h',
+                             'Forest fuel dryness factor')) %>%
+          mutate(meas = tolower(word(meas, 1))) %>%
+          group_by(date, meas) %>%
+          summarise(max = max(as.numeric(value), na.rm = TRUE),
+                    min = min(as.numeric(value), na.rm = TRUE)) %>% 
+          pivot_longer(c(max,min)) %>%
+          pivot_wider(date, c(meas, name))
+        
+        df <- df %>% 
+          left_join(wind_agg)
+        
+        # add fdr colors to plotting data then bind latest observations
+        wind <- wind %>%
+          left_join(select(df, date, fdr_color), by = 'date') %>%
+          bind_rows(latest)
+        
+        isolate({dat$df = df})
         isolate({dat$wind = wind})
         
         incProgress(.20, '3hr Weather plotting')
@@ -268,36 +285,76 @@ server <- function(input, output, session) {
           c3_grid_server(input, output, session, dat$wind, label, cats)
         }, 1:nrow(dat$df))
         
-        incProgress(.20, 'Render Output')
+        incProgress(.15, 'Render Charts')
         
         # render UI for dropdown panels
         render_days <- lapply(1:nrow(dat$df), function(n){
           r <- dat$df[n,]
           pbox <- box(
-            title = tags$a(href = r$item_link, 'view on CFA page'),
+            #title = tags$a(href = r$item_link, 'view on CFA page'),
             width = 12,
             solidHeader = TRUE,
             background = r$color, 
             fluidRow(
+              tags$head(tags$style(HTML('.info-box {min-height: 45px; filter: brightness(0.95);} ',
+                                        '.info-box-icon {height: 45px; line-height: 45px; width: 50px; padding-bottom: 10px; font-size: 15px;} ',
+                                        '.info-box-icon i {font-size: 30px; padding-top: 7px;} ',
+                                        '.info-box-content {padding-top: 0px; padding-bottom: 0px; margin-left: 50px;} ',
+                                        '.info-box-content span {font-size: 14px; padding-top: 2px; filter: brightness(2);}'))),
               column(
                 width = 6,
-                h2(r$title),
-                infoBox(
-                  title = r$precis, 
-                  value = glue('{r$probability_of_precipitation}% for {r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm'),
-                  #color = r$color,
-                  icon = icon('cloud'),
-                  width = 12,
-                  fill = TRUE 
-                ),
-                infoBox(
-                  title = "Temperature", 
-                  value = glue('{r$minimum_temperature} - {r$maximum_temperature} degrees C'),
-                  #color = r$color,
-                  icon = icon('thermometer-half'),
-                  width = 12,
-                  fill = TRUE 
-                )
+                fluidRow(column(6,
+                                infoBox(
+                                  title = 'Rain', 
+                                  value = glue('{r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'),
+                                  color = r$color,
+                                  icon = icon('cloud'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "Temperature", 
+                                  value = glue('{r$minimum_temperature} - {r$maximum_temperature} °C'),
+                                  color = r$color,
+                                  icon = icon('thermometer-half'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "Fuel Dryness", 
+                                  value = glue('{r$forest_min} - {r$forest_max}'),
+                                  color = r$color,
+                                  icon = icon('tree'),
+                                  width = 12,
+                                  fill = TRUE 
+                                )),
+                         column(6,
+                                infoBox(
+                                  title = 'Wind', 
+                                  value = glue('{r$wind_min} - {r$wind_max} km/h'),
+                                  color = r$color,
+                                  icon = icon('flag'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "Humidity", 
+                                  value = glue('{r$relative_min} - {r$relative_max} %'),
+                                  color = r$color,
+                                  icon = icon('burn'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ),
+                                infoBox(
+                                  title = "UV", 
+                                  value = glue('{r$uv}'),
+                                  color = r$color,
+                                  icon = icon('sun'),
+                                  width = 12,
+                                  fill = TRUE 
+                                ))
+                         ),
+                tags$p(r$precis)
                 #h1(r$item_title)
                 #HTML(r$item_description)
               ),
@@ -310,8 +367,9 @@ server <- function(input, output, session) {
           
           tags$div(class="panel panel-default",
                    tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
-                            style = glue('background-color: {r$color};'),
+                            style = glue('background-color: {r$fdr_color};'),
                             tags$h4(class="panel-title",
+                                    style=glue("color: {tetradic(r$color, plot = FALSE)[3]};"),
                                     tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                            fluidRow(
                                              column(9, r$item_title),
@@ -321,7 +379,8 @@ server <- function(input, output, session) {
                             )), 
                    tags$div(id=glue("collapse{n}"), class="panel-collapse collapse", role="tabpanel", `aria-labelledby`=glue("heading{n}"), #content div
                             tags$div(class="panel-body",
-                                     pbox
+                                     pbox,
+                                     tags$a(href = r$item_link, 'view on CFA page')
                             ))  
           )
         })
@@ -329,6 +388,33 @@ server <- function(input, output, session) {
         output$days <- shiny::renderUI({
           tagList(tags$div(class="panel-group", id="accordion", role="tablist", `aria-multiselectable`="true",
                            render_days))
+        })
+        
+        
+        incProgress(.05, 'Data Sources')
+        
+        output$sources <- renderUI({
+          
+          tagList(
+            h3('Data Sources'),
+              p('All data is sourced when you first load the page via a combination of RSS feeds and webscraping. ',
+                'The links here are the reliable sources, this page merely groups useful information from these sources.'),
+              h4('CFA'),
+                h5('Fire Danger Ratings:'),
+                  tags$a(href = glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district'),
+                         glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district')),
+                h5('Fire Danger Ratings (RSS):'),
+                  tags$a(href = furl, furl),
+              h4('BOM'),
+                h5('Extended Forecast (7 day):'),
+                tags$a(href = surl, surl),
+              h5('Detailed 3-hourly Forecast:'),
+                tags$a(href = wurl, wurl),
+              h5('Current and Past Weather:'),
+                tags$a(href = fc$obs_url[1], fc$obs_url[1])
+            
+          )
+          
         })
         
         
@@ -347,7 +433,6 @@ server <- function(input, output, session) {
       
       
     })
-    
       
     }, priority = 0)
 
