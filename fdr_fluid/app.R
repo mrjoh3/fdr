@@ -36,14 +36,14 @@ fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
 #precis_w <- get_precis_forecast('VIC')
 
 ui <- shinyUI(fluidPage(
-  title = 'CFA FDR and Weather for Central Region',
+  title = 'FDR and Weather',
   responsive = TRUE,
   theme = shinytheme("superhero"),
   header = NULL,
   useShinydashboard(),
   mobileDetect('isMobile'),
   tags$div(style = 'text-align: center;',
-    h1('CFA Fire Danger Rating and Weather', icon('fire',class = 'orange')),
+    h1('Fire Danger Ratings and Weather', icon('fire',class = 'orange')),
     h5(textOutput('subtitle')),
     tags$hr()
     ),
