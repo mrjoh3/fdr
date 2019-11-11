@@ -350,8 +350,13 @@ server <- function(input, output, session) {
                                     style=glue("color: {tetradic(r$color, plot = FALSE)[3]};"),
                                     tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                            fluidRow(
-                                             column(9, r$item_title),
-                                             column(3, r$title)
+                                             column(6, r$item_title),
+                                             column(3, r$tfb, if (r$tfb != '') {icon('ban')} else {''}),
+                                             column(3, 
+                                                    h4(style = 'text-align: right; margin: 0;',
+                                                      tags$b(r$title)
+                                                      )
+                                               )
                                            )
                                     )
                             )), 
