@@ -140,12 +140,19 @@ server <- function(input, output, session) {
     
   }, priority = 1)
   
+  observe({
+    print(5)
+    output$subtitle <- renderText({
+      #print(dat$location)
+      glue('{tools::toTitleCase(gsub("-"," ", dat$location))} is in the {tools::toTitleCase(dat$cfa)} Total Fire Ban District')
+    })
+
+  }, priority = 3)
+  
   # watch button to update qry and get new location
   observeEvent(input$location, {
     print(4)
     isolate({dat$location = input$location})
-    #updateQueryString(glue('?location={location}'), mode = "push", session)
-    #updateQueryString(glue(''), mode = "push", session)
   }, ignoreInit = TRUE, priority = 3)
   
 
@@ -156,10 +163,6 @@ server <- function(input, output, session) {
     print(3)
     
     withProgress(message = 'Loading', value = 0, {
-      
-      output$subtitle <- renderText({
-        glue('{tools::toTitleCase(gsub("-"," ", dat$location))} is in the {tools::toTitleCase(dat$cfa)} Total Fire Ban District')
-      })
       
       # define and check urls exist
       wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/') # 3hr detailed forecast
