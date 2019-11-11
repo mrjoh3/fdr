@@ -43,7 +43,7 @@ ui <- shinyUI(fluidPage(
   useShinydashboard(),
   mobileDetect('isMobile'),
   tags$div(style = 'text-align: center;',
-    h1('Fire Danger Ratings and Weather', icon('fire',class = 'orange')),
+    h1('FDR and Weather', icon('fire',class = 'orange')),
     h5(textOutput('subtitle')),
     tags$hr()
     ),
