@@ -111,7 +111,11 @@ get_precis <- function(url){
   days <- doc %>%
     html_nodes('.day')
   
-  dates <- seq(Sys.Date(), length.out = length(days), by = 1)
+  forcast_datetime <- doc %>% html_node('.date') %>% html_text() %>%
+    as.POSIXct(., format = "Forecast issued at %I:%M %p AEDT on %a %d %b %Y", tz = 'AEDT')
+  forcast_date <- as.Date(forcast_datetime)
+  
+  dates <- seq(forcast_date, length.out = length(days), by = 1)
   
   obs_url <- doc %>% html_nodes('.obs a') %>% html_attr('href')
   
@@ -125,6 +129,7 @@ get_precis <- function(url){
     precis <- days[[n]]  %>% html_node('p') %>% html_text()
     uv <- days[[n]]  %>% html_node('p.alert') %>% html_text()
     names <- dd %>% html_attr('class') 
+    #hd <- days[[n]] %>% html_node('h2') %>% html_text() %>% as.Date(., format = '%a %d %b %Y')
     
     names[is.na(names)] <- 'X'
     
@@ -141,7 +146,8 @@ get_precis <- function(url){
              area = area,
              precis = precis,
              uv = uv, 
-             date = dates[n]) %>%
+             date = dates[n],
+             forcast_datetime = forcast_datetime) %>%
       separate(amt, c('lower_precipitation_limit', 'upper_precipitation_limit'), sep = ' to ', remove = TRUE) %>%
       mutate(upper_precipitation_limit = gsub(' mm', '', upper_precipitation_limit),
              pop = str_trim(pop, 'both'),
@@ -150,6 +156,7 @@ get_precis <- function(url){
     
   }) %>% bind_rows() %>%
     select(date,
+           forcast_datetime,
            minimum_temperature = min,
            maximum_temperature = max,
            lower_precipitation_limit,
