@@ -182,33 +182,8 @@ server <- function(input, output, session) {
         
         incProgress(.20, 'CFA Fire Danger')
         
-        df <- furl %>%
-          tidyfeed(.) %>%
-          mutate(date = as.Date(gsub('Today, |Tomorrow, ', '', item_title), '%a, %d %b %Y'),
-                 title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
-                 start = date,
-                 end = date + days(1),
-                 day = wday(start, label = TRUE),
-                 week = isoweek(start),
-                 rendering = 'background',
-                 color = case_when(
-                   title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
-                   title == 'EXTREME' ~ 'red', #ee2e24',
-                   title == 'SEVERE' ~ 'orange', #f89829',
-                   title == 'VERY HIGH' ~ 'yellow', #fff002',
-                   title == 'HIGH' ~ 'blue', #00adef',
-                   title == 'LOW-MODERATE' ~ 'green' #79c141'
-                 ),
-                 fdr_color = case_when(
-                   title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
-                   title == 'EXTREME' ~ '#ee2e24',
-                   title == 'SEVERE' ~ '#f89829',
-                   title == 'VERY HIGH' ~ '#fff002',
-                   title == 'HIGH' ~ '#00adef',
-                   title == 'LOW-MODERATE' ~ '#79c141'
-                 )) %>%
-          filter(!is.na(date)) %>%
-          distinct()
+        # cfa fire danger ratings forecast
+        df <- get_fdr(furl)
         
         # merge fdr and forecast
         df <- left_join(df, fc, by = 'date')
