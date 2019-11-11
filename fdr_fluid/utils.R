@@ -144,6 +144,7 @@ get_precis <- function(url){
              date = dates[n]) %>%
       separate(amt, c('lower_precipitation_limit', 'upper_precipitation_limit'), sep = ' to ', remove = TRUE) %>%
       mutate(upper_precipitation_limit = gsub(' mm', '', upper_precipitation_limit),
+             pop = str_trim(pop, 'both'),
              uv = unlist(str_extract_all(uv, '[1-9]')) %>% .[length(.)]) %>%
       mutate_at(c('lower_precipitation_limit', 'upper_precipitation_limit', 'uv'), as.numeric) 
     
