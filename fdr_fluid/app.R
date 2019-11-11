@@ -284,7 +284,16 @@ server <- function(input, output, session) {
                 fluidRow(column(6,
                                 infoBox(
                                   title = 'Rain', 
-                                  value = glue('{r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'),
+                                  value = ifelse(all(!is.na(c(r$lower_precipitation_limit, r$upper_precipitation_limit))), 
+                                                 glue('{r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'), 
+                                                 ifelse(all(is.na(c(r$lower_precipitation_limit, r$upper_precipitation_limit))), 
+                                                        glue('0 mm ({r$probability_of_precipitation})'), 
+                                                        ifelse(is.na(r$lower_precipitation_limit) & !is.na(r$upper_precipitation_limit), 
+                                                               glue('max {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'), 
+                                                               ' - '
+                                                               )
+                                                        )
+                                                 ),
                                   color = r$color,
                                   icon = icon('cloud'),
                                   width = 12,
@@ -292,7 +301,14 @@ server <- function(input, output, session) {
                                 ),
                                 infoBox(
                                   title = "Temperature", 
-                                  value = glue('{r$minimum_temperature} - {r$maximum_temperature} °C'),
+                                  #value = glue('{r$minimum_temperature} - {r$maximum_temperature} °C'),
+                                  value = ifelse(all(!is.na(c(r$minimum_temperature, r$maximum_temperature))), 
+                                                 glue('{r$minimum_temperature} - {r$maximum_temperature} °C'), 
+                                                 ifelse(is.na(r$minimum_temperature) & !is.na(r$maximum_temperature), 
+                                                        glue('max {r$maximum_temperature} °C'), 
+                                                        ' - '
+                                                        )
+                                                 ),
                                   color = r$color,
                                   icon = icon('thermometer-half'),
                                   width = 12,
@@ -300,7 +316,9 @@ server <- function(input, output, session) {
                                 ),
                                 infoBox(
                                   title = "Fuel Dryness", 
-                                  value = glue('{r$forest_min} - {r$forest_max}'),
+                                  value = ifelse(r$forest_min == r$forest_max, 
+                                                 as.character(r$forest_max), 
+                                                 glue('{r$forest_min} - {r$forest_max}')),
                                   color = r$color,
                                   icon = icon('tree'),
                                   width = 12,
@@ -325,7 +343,7 @@ server <- function(input, output, session) {
                                 ),
                                 infoBox(
                                   title = "UV", 
-                                  value = glue('{r$uv}'),
+                                  value = ifelse(is.na(r$uv), ' - ', as.character(r$uv)),
                                   color = r$color,
                                   icon = icon('sun'),
                                   width = 12,
