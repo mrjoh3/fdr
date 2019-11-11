@@ -269,7 +269,7 @@ server <- function(input, output, session) {
         render_days <- lapply(1:nrow(dat$df), function(n){
           r <- dat$df[n,]
           pbox <- box(
-            #title = tags$a(href = r$item_link, 'view on CFA page'),
+            #title = r$tfb,
             width = 12,
             solidHeader = TRUE,
             background = r$color, 
