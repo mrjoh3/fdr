@@ -12,21 +12,21 @@ mobileDetect <- function(inputId, value = 0) {
 
 
 # 4 plots in a box UI (rendered inside server , renderUI)
-c3_grid_UI <- function(label, cats){
+c3_grid_UI <- function(label, location, cats){
   
   cats_L <- tolower(word(unique(cats), 1))
   
   tagList(
     fluidRow(column(6,
                     h5(cats[1]),
-                    c3Output(glue("{cats_L[1]}{gsub('-', '', label)}", height = 80)),
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[1]}{gsub('-', '', label)}", height = 80)),
                     h5(cats[2]),
-                    c3Output(glue("{cats_L[2]}{gsub('-', '', label)}", height = 80))),
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[2]}{gsub('-', '', label)}", height = 80))),
              column(6,
                     h5(cats[3]),
-                    c3Output(glue("{cats_L[3]}{gsub('-', '', label)}", height = 80)),
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[3]}{gsub('-', '', label)}", height = 80)),
                     h5(cats[4]),
-                    c3Output(glue("{cats_L[4]}{gsub('-', '', label)}", height = 80)))
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[4]}{gsub('-', '', label)}", height = 80)))
              )
   )
   
@@ -35,12 +35,12 @@ c3_grid_UI <- function(label, cats){
 
 
 
-c3_grid_server <- function(input, output, session, wind, label, cats){
+c3_grid_server <- function(input, output, session, wind, label, location, cats){
   
   cats_L <- tolower(word(unique(cats), 1))
   
   Map(function(pl){
-    output[[glue("{cats_L[pl]}{gsub('-', '', label)}")]] <- renderC3({
+    output[[glue("{gsub('-', '', location)}{cats_L[pl]}{gsub('-', '', label)}")]] <- renderC3({
       
       c3df <- wind %>%
         filter(date == label,
