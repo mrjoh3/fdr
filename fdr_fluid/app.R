@@ -166,7 +166,7 @@ server <- function(input, output, session) {
     
     print(3)
     
-    withProgress(message = 'Loading', value = 0, {
+    withProgress(message = 'Loading', value = 0.1, {
       
       # define and check urls exist
       wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/') # 3hr detailed forecast
@@ -176,7 +176,7 @@ server <- function(input, output, session) {
       # test location available
       if (RCurl::url.exists(wurl)) { #  & RCurl::url.exists(furl)
         
-        incProgress(.20, 'Precis Weather Forecast')
+        incProgress(.30, 'Precis Weather Forecast')
         
         # get BOM forecast data
         fc <- get_precis(surl)
@@ -184,7 +184,7 @@ server <- function(input, output, session) {
         # get latest weather
         latest <- get_latest(fc$obs_url[1])
         
-        incProgress(.20, 'CFA Fire Danger')
+        incProgress(.30, 'CFA Fire Danger')
         
         # cfa fire danger ratings forecast
         df <- get_fdr(furl)
@@ -192,7 +192,7 @@ server <- function(input, output, session) {
         # merge fdr and forecast
         df <- left_join(df, fc, by = 'date')
         
-        incProgress(.20, '3hr Weather Forecast')
+        incProgress(.30, '3hr Weather Forecast')
         
         wind <- read_html(wurl) %>%
           html_table() %>%
