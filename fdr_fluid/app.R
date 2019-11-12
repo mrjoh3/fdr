@@ -106,6 +106,10 @@ server <- function(input, output, session) {
 
   dat <- reactiveValues(df = data.frame(),
                         wind = data.frame(),
+                        fc = data.frame(),
+                        furl = as.character(),
+                        wurl = as.character(),
+                        surl = as.character(),
                         load = TRUE)
   
   observe({    # check for url parameters
@@ -253,170 +257,11 @@ server <- function(input, output, session) {
         
         isolate({dat$df = df})
         isolate({dat$wind = wind})
+        isolate({dat$fc = fc})
+        isolate({dat$furl = furl})
+        isolate({dat$wurl = wurl})
+        isolate({dat$surl = surl})
         
-        incProgress(.20, '3hr Weather plotting')
-        
-        # add c3 elements need 4 plots per row
-        Map(function(n){
-          label <- dat$df[['date']][n]
-          cats <- unique(dat$wind$meas)
-          c3_grid_server(input, output, session, dat$wind, label, cats)
-        }, 1:nrow(dat$df))
-        
-        incProgress(.15, 'Render Charts')
-        
-        # render UI for dropdown panels
-        render_days <- lapply(1:nrow(dat$df), function(n){
-          r <- dat$df[n,]
-          pbox <- box(
-            #title = r$tfb,
-            width = 12,
-            solidHeader = TRUE,
-            background = r$color, 
-            fluidRow(
-              tags$head(tags$style(HTML('.info-box {min-height: 45px; filter: brightness(0.95);} ',
-                                        '.info-box-icon {height: 45px; line-height: 45px; width: 50px; padding-bottom: 10px; font-size: 15px;} ',
-                                        '.info-box-icon i {font-size: 30px; padding-top: 7px;} ',
-                                        '.info-box-content {padding-top: 0px; padding-bottom: 0px; margin-left: 50px;} ',
-                                        '.info-box-content span {font-size: 14px; padding-top: 2px; filter: brightness(2);}'))),
-              column(
-                width = 6,
-                fluidRow(column(6,
-                                infoBox(
-                                  title = 'Rain', 
-                                  value = ifelse(all(!is.na(c(r$lower_precipitation_limit, r$upper_precipitation_limit))), 
-                                                 glue('{r$lower_precipitation_limit} - {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'), 
-                                                 ifelse(all(is.na(c(r$lower_precipitation_limit, r$upper_precipitation_limit))), 
-                                                        glue('0 mm ({r$probability_of_precipitation})'), 
-                                                        ifelse(is.na(r$lower_precipitation_limit) & !is.na(r$upper_precipitation_limit), 
-                                                               glue('max {r$upper_precipitation_limit} mm ({r$probability_of_precipitation})'), 
-                                                               ' - '
-                                                               )
-                                                        )
-                                                 ),
-                                  color = r$color,
-                                  icon = icon('cloud'),
-                                  width = 12,
-                                  fill = TRUE 
-                                ),
-                                infoBox(
-                                  title = "Temperature", 
-                                  #value = glue('{r$minimum_temperature} - {r$maximum_temperature} °C'),
-                                  value = ifelse(all(!is.na(c(r$minimum_temperature, r$maximum_temperature))), 
-                                                 glue('{r$minimum_temperature} - {r$maximum_temperature} °C'), 
-                                                 ifelse(is.na(r$minimum_temperature) & !is.na(r$maximum_temperature), 
-                                                        glue('max {r$maximum_temperature} °C'), 
-                                                        ' - '
-                                                        )
-                                                 ),
-                                  color = r$color,
-                                  icon = icon('thermometer-half'),
-                                  width = 12,
-                                  fill = TRUE 
-                                ),
-                                infoBox(
-                                  title = "Fuel Dryness", 
-                                  value = ifelse(r$forest_min == r$forest_max, 
-                                                 as.character(r$forest_max), 
-                                                 glue('{r$forest_min} - {r$forest_max}')),
-                                  color = r$color,
-                                  icon = icon('tree'),
-                                  width = 12,
-                                  fill = TRUE 
-                                )),
-                         column(6,
-                                infoBox(
-                                  title = 'Wind', 
-                                  value = glue('{r$wind_min} - {r$wind_max} km/h'),
-                                  color = r$color,
-                                  icon = icon('flag'),
-                                  width = 12,
-                                  fill = TRUE 
-                                ),
-                                infoBox(
-                                  title = "Humidity", 
-                                  value = glue('{r$relative_min} - {r$relative_max} %'),
-                                  color = r$color,
-                                  icon = icon('burn'),
-                                  width = 12,
-                                  fill = TRUE 
-                                ),
-                                infoBox(
-                                  title = "UV", 
-                                  value = ifelse(is.na(r$uv), ' - ', as.character(r$uv)),
-                                  color = r$color,
-                                  icon = icon('sun'),
-                                  width = 12,
-                                  fill = TRUE 
-                                ))
-                         ),
-                tags$p(r$precis)
-                #h1(r$item_title)
-                #HTML(r$item_description)
-              ),
-              column(
-                width = 6,
-                #plotOutput(glue('plot{n}'))
-                c3_grid_UI(r$date, unique(dat$wind$meas))
-              ))
-          )
-          
-          tags$div(class="panel panel-default",
-                   tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
-                            style = glue('background-color: {r$fdr_color};'),
-                            tags$h4(class="panel-title",
-                                    style=glue("color: {tetradic(r$color, plot = FALSE)[3]};"),
-                                    tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
-                                           fluidRow(
-                                             column(6, r$item_title),
-                                             column(3, r$tfb, if (r$tfb != '') {icon('ban')} else {''}),
-                                             column(3, 
-                                                    h4(style = 'text-align: right; margin: 0;',
-                                                      tags$b(r$title)
-                                                      )
-                                               )
-                                           )
-                                    )
-                            )), 
-                   tags$div(id=glue("collapse{n}"), class="panel-collapse collapse", role="tabpanel", `aria-labelledby`=glue("heading{n}"), #content div
-                            tags$div(class="panel-body",
-                                     pbox,
-                                     tags$a(href = r$item_link, 'view on CFA page')
-                            ))  
-          )
-        })
-        
-        output$days <- shiny::renderUI({
-          tagList(tags$div(class="panel-group", id="accordion", role="tablist", `aria-multiselectable`="true",
-                           render_days))
-        })
-        
-        
-        incProgress(.05, 'Data Sources')
-        
-        output$sources <- renderUI({
-          
-          tagList(
-            h3('Data Sources'),
-              p('All data is sourced when you first load the page via a combination of RSS feeds and webscraping. ',
-                'The links here are the reliable sources, this page merely groups useful information from these sources.'),
-              h4('CFA'),
-                h5('Fire Danger Ratings:'),
-                  tags$a(href = glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district'),
-                         glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district')),
-                h5('Fire Danger Ratings (RSS):'),
-                  tags$a(href = furl, furl),
-              h4('BOM'),
-                h5('Extended Forecast (7 day):'),
-                tags$a(href = surl, surl),
-              h5('Detailed 3-hourly Forecast:'),
-                tags$a(href = wurl, wurl),
-              h5('Current and Past Weather:'),
-                tags$a(href = fc$obs_url[1], fc$obs_url[1])
-            
-          )
-          
-        })
         
         
       } else {
