@@ -242,3 +242,22 @@ get_fdr <- function(url){
     distinct()
   
 }
+
+
+calc_fdi <- function(df){
+  
+  df %>% 
+    filter(meas %in% c('Relative humidity (%)',
+                       'Air temperature (°C)',
+                       'Wind speed  km/h',
+                       'Forest fuel dryness factor')) %>%
+    mutate(meas = tolower(word(meas, 1))) %>%
+    select(time, 
+           now,
+           meas,
+           value) %>%
+    pivot_wider(names_from = meas, values_from = value) %>%
+    arrange(time) %>%
+    mutate(fdi = 2 * exp(-0.45 + (0.987 * log(forest)) + (0.0338 * air) - (0.0345 * relative) + (0.0234 * wind)))
+    
+}
