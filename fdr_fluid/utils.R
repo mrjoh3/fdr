@@ -179,7 +179,7 @@ get_latest <- function(url){
   doc <- read_html(url)
   
   dt <- doc %>% html_nodes('h2.pointer span') %>% html_text() %>%
-    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.')
+    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.', tz = 'AEDT')
   
   tbls <- doc %>% html_table()
   tdy <- tbls[[3]]
@@ -243,8 +243,15 @@ get_fdr <- function(url){
   
 }
 
+fdr_colour <- c('LOW-MODERATE' = '#79c141',
+                'HIGH' = '#00adef',
+                'VERY HIGH' = '#fff002',
+                'SEVERE' = '#f89829',
+                'EXTREME' = '#ee2e24',
+                'CODE RED' = '#710d08')
 
-calc_fdi <- function(df){
+
+calc_fdi <- function(df, mobile = FALSE){
   
   df %>% 
     filter(meas %in% c('Relative humidity (%)',
@@ -258,6 +265,47 @@ calc_fdi <- function(df){
            value) %>%
     pivot_wider(names_from = meas, values_from = value) %>%
     arrange(time) %>%
-    mutate(fdi = 2 * exp(-0.45 + (0.987 * log(forest)) + (0.0338 * air) - (0.0345 * relative) + (0.0234 * wind)))
+    fill(forest, .direction = 'updown') %>%
+    mutate(fdi = 2 * exp(-0.45 + (0.987 * log(forest)) + (0.0338 * air) - (0.0345 * relative) + (0.0234 * wind)),
+           fdr = case_when(
+             fdi > 94 ~ 'CODE RED', 
+             fdi > 74 ~ 'EXTREME',
+             fdi > 49 ~ 'SEVERE',
+             fdi > 24 ~ 'VERY HIGH',
+             fdi > 11 ~ 'HIGH',
+             fdi > 0  ~ 'LOW-MODERATE'
+           )) %>% 
+    filter(!(is.na(now) & is.na(fdi))) %>% 
+    mutate(cnk = ifelse(fdr != lead(fdr, 1), time, NA)) %>%
+    fill(cnk, .direction = 'up') %>% 
+      # ggplot(data = ., aes(x = t2, ymax = fdi, ymin = 0, group = cnk, fill = fdr)) +
+      #   geom_ribbon()
+      # ggplot(data=dat3, aes(x=date, ymax=count, ymin=0, group=df, fill=month)) + geom_ribbon()
+    group_by(cnk, fdr) %>% 
+    summarise(xmin = min(time),
+              xmax = max(time),
+              fdi = mean(fdi)) %>% 
+    ungroup() %>%
+    mutate(xmax = lead(xmin, 1),
+           fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>% 
+    ggplot() +
+      geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = fdr)) +
+      scale_color_manual(values = fdr_colour,
+                         aesthetics = c("colour", "fill")) +
+      theme_minimal() +
+    theme(axis.line=element_blank(),
+          axis.text=element_text(colour = "lightgrey", 
+                                 size = ifelse(mobile, 30, 14)),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          #axis.ticks.x = element_line(),
+          #axis.title.x=element_blank(),
+          axis.title.y=element_blank(),
+          legend.position="none",
+          panel.background = element_rect(fill = "transparent", colour = NA),
+          plot.background = element_rect(fill = "transparent", colour = NA),
+          panel.border=element_blank(),
+          panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank())
     
 }

@@ -75,6 +75,12 @@ ui <- shinyUI(fluidPage(
            ),
     column(4)
   ),
+  fluidRow(div(
+    style = 'padding: 30px;',
+    tags$hr(),
+    h3("Daily Variation"),
+    plotOutput('daily', height = 100)
+  )),
   fluidRow(
     div(style = 'padding: 30px;',
         tags$hr(),
@@ -431,6 +437,9 @@ server <- function(input, output, session) {
                          render_days))
       })
       
+      output$daily <- renderPlot({
+        calc_fdi(dat$wind, mobile = input$isMobile)
+      }, height = 100, bg = 'transparent')
       
       incProgress(.05, 'Data Sources')
       
