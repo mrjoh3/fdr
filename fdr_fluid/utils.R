@@ -287,7 +287,9 @@ calc_fdi <- function(df, mobile = FALSE){
               fdi = mean(fdi)) %>% 
     ungroup() %>%
     mutate(xmax = lead(xmin, 1),
-           fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>% 
+           xmax = if_else(is.na(xmax), 
+                          as.POSIXct(glue('{as.Date(xmin) + days(1)} 00:00"))'), tz = 'AEDT'), xmax), # catch mising last value
+           fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>% #View()
     ggplot() +
       geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = fdr)) +
       scale_color_manual(values = fdr_colour,
