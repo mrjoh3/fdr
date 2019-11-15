@@ -69,9 +69,9 @@ ui <- shinyUI(fluidPage(
            #tags$img(src = 'www/fdr-scale.gif', width = '95%')
     ),
     column(4,
-           selectizeInput('location', 'Nearest Town', 
-                          choices = town_lu, 
-                          selected = 'st-andrews')
+           selectInput('location', 'Nearest Town', selectize = T,
+                       choices = town_lu, 
+                       selected = 'st-andrews')
            ),
     column(4)
   ),
@@ -82,16 +82,8 @@ ui <- shinyUI(fluidPage(
     plotOutput('daily', height = 100)
   )),
   fluidRow(
-    div(style = 'padding: 30px;',
-        tags$hr(),
-        h3('Fire Danger Ratings'),
-        tabsetPanel(
-          tabPanel(h5('Forest'),
-                   tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
-          tabPanel(h5('Grassland'),
-                   tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
-        )
-  )),
+      uiOutput('fdr_images')
+    ),
   fluidRow(
     column(12,
            tags$hr(),
@@ -127,9 +119,9 @@ server <- function(input, output, session) {
       
       if (!is.null(query[['location']]) & dat$load) {
         location <- query[['location']]
-        updateSelectizeInput(session, "location", 
-                             choices = town_lu, 
-                             selected = query[['location']])
+        updateSelectInput(session, "location", 
+                          choices = town_lu, 
+                          selected = query[['location']])
         print('into if')
         isolate({dat$load <- FALSE})
       }
@@ -440,6 +432,10 @@ server <- function(input, output, session) {
       output$daily <- renderPlot({
         calc_fdi(dat$wind, mobile = input$isMobile)
       }, height = 100, bg = 'transparent')
+      
+      output$fdr_images <- renderUI({
+        fdr_images(input$isMobile)
+      })
       
       incProgress(.05, 'Data Sources')
       

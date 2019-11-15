@@ -311,3 +311,39 @@ calc_fdi <- function(df, mobile = FALSE){
           panel.grid.minor=element_blank())
     
 }
+
+
+fdr_images <- function(mobile){
+  
+  if (mobile) {
+    
+    tl <- div(style = 'padding: 30px;',
+        tags$hr(),
+        h3('Fire Danger Ratings'),
+        tabsetPanel(
+          tabPanel(h5('Forest'),
+                   tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
+          tabPanel(h5('Grassland'),
+                   tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
+        )
+    )
+    
+  } else {
+    
+    tl <- div(style = 'padding: 30px;',
+              tags$hr(),
+              h3('Fire Danger Ratings'),
+              column(6,
+                h5('Forest'),
+                tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
+              column(6,
+                h5('Grassland'),
+                tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
+              
+    )
+    
+  }
+    
+  return(tl)  
+  
+}
