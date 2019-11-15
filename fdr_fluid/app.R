@@ -71,18 +71,20 @@ ui <- shinyUI(fluidPage(
     uiOutput('days'), tags$hr()
   ),
   fluidRow(
-    column(4#,
-           #tags$img(src = 'www/fdr-scale.gif', width = '95%')
+    column(7,
+           # https://emergencyprepare.com.au/wp-content/uploads/2018/10/fire-danger-preview-2.png
+           tags$img(src = 'fire-danger-preview-2.png', height = '160px', class = 'center')
     ),
-    column(4,
-           selectInput('location', 'Nearest Town', selectize = T,
-                       choices = town_lu, 
-                       selected = 'st-andrews')
-           ),
-    column(4)
+    column(5,
+           div(class = 'center', style = 'padding-top: 30px;',
+               selectInput('location', 'Nearest Town', selectize = T, width = '100%',
+                           choices = town_lu, 
+                           selected = TOWN_DEFAULT)
+               )
+           )
   ),
   fluidRow(div(
-    style = 'padding: 30px;',
+    style = 'padding: 10px;',
     tags$hr(),
     h3("Daily Variation"),
     plotOutput('daily', height = 100)
