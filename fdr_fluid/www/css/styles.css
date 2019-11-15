@@ -5,3 +5,8 @@
 .c3-target-value text {
    fill: orange !important;
 }
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
