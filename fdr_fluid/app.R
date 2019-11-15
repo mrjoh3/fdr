@@ -106,9 +106,9 @@ ui <- shinyUI(fluidPage(
 server <- function(input, output, session) {
   
   # check for mobile device
-  output$isItMobile <- renderText({
-    ifelse(input$isMobile, "You are on a mobile device", "You are not on a mobile device")
-  })
+  # output$isItMobile <- renderText({
+  #   ifelse(input$isMobile, "You are on a mobile device", "You are not on a mobile device")
+  # })
 
   dat <- reactiveValues(df = data.frame(),
                         wind = data.frame(),
@@ -338,7 +338,7 @@ server <- function(input, output, session) {
                                                )
                                 ),
                                 color = r$color,
-                                icon = icon('cloud'),
+                                icon = icon('burn'),
                                 width = 12,
                                 fill = TRUE 
                               ),
@@ -380,7 +380,7 @@ server <- function(input, output, session) {
                                 title = "Humidity", 
                                 value = glue('{r$relative_min} - {r$relative_max} %'),
                                 color = r$color,
-                                icon = icon('burn'),
+                                icon = icon('cloud'),
                                 width = 12,
                                 fill = TRUE 
                               ),
@@ -411,7 +411,7 @@ server <- function(input, output, session) {
                  tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
                           style = glue('background-color: {r$fdr_color};'),
                           tags$h4(class="panel-title",
-                                  style=glue("color: {tetradic(r$color, plot = FALSE)[3]};"),
+                                  style=glue("color: {sequential(splitComp(r$color, plot = FALSE)[3], plot = FALSE)[15]};"),
                                   tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                          fluidRow(
                                            column(6, r$item_title),
