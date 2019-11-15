@@ -23,27 +23,33 @@ library(c3)
 source('utils.R')
 towns <- readRDS('towns.rds')
 
+TOWN_DEFAULT = 'st-andrews'
+
 cfa__lu <- gsub(' ', '', tolower(unique(towns$cfa_tfb))) %>% as.list() %>%
   setNames(unique(towns$cfa_tfb))
 town_lu <- towns$town_val %>% as.list() %>%
   setNames(towns$town_name)
 
-fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
-                                          src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.1.0/"),
-                                          script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
+fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.9.0",
+                                          src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/"),
+                                          script = "js/fontawesome.min.js", stylesheet = "css/fontawesome.min.css"
 )
+# fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
+#                                             src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.1.0/"),
+#                                             script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
+# )
 
 #precis_w <- get_precis_forecast('VIC')
 
 ui <- shinyUI(fluidPage(
-  title = 'FDR and Weather',
+  title = 'FDR Weather',
   responsive = TRUE,
   theme = shinytheme("superhero"),
   header = NULL,
   useShinydashboard(),
   mobileDetect('isMobile'),
   tags$div(style = 'text-align: center;',
-    h1('FDR and Weather', icon('fire',class = 'orange')),
+    h1('FDR Weather', icon('fire', class = 'orange')),
     h5(textOutput('subtitle')),
     tags$hr()
     ),
