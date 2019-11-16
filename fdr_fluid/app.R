@@ -411,7 +411,7 @@ server <- function(input, output, session) {
                  tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
                           style = glue('background-color: {r$fdr_color};'),
                           tags$h4(class="panel-title",
-                                  style=glue("color: {sequential(splitComp(r$color, plot = FALSE)[3], plot = FALSE)[15]};"),
+                                  style=glue("color: {sequential(splitComp(r$fdr_color, plot = FALSE)[2], plot = FALSE, percentage = 10, what = 'value')[6]};"),
                                   tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                          fluidRow(
                                            column(6, r$item_title),
