@@ -219,7 +219,7 @@ get_fdr <- function(url){
            week = isoweek(start),
            rendering = 'background',
            color = case_when(
-             title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
+             title == 'CODE RED' ~ 'black', # should be same as extreme but with black cross hatch
              title == 'EXTREME' ~ 'red', #ee2e24',
              title == 'SEVERE' ~ 'orange', #f89829',
              title == 'VERY HIGH' ~ 'yellow', #fff002',
