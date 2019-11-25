@@ -2,6 +2,7 @@
 
 # processing spatial data
 
+library(dplyr)
 library(sf)
 library(stringr)
 
@@ -14,12 +15,10 @@ towns <- st_read('shp/VIC_TOWN_POINT_shp.shp', stringsAsFactors = FALSE) %>%
   st_join(cfa_tfb) %>%
   select(town_name = TOWN_NAME,
          cfa_tfb = TFB_DIST) %>%
-  rowwise() %>%
   mutate(cfa_tfb = tools::toTitleCase(tolower(cfa_tfb)),
-         town_val = gsub(' | - ', '-', tolower(unique(town_name)))) %>%
-  ungroup() %>%
+         town_val = gsub(' | - ', '-', tolower(town_name))) %>%
   arrange(town_name) %>%
-  select(-geometry)
+  .[!duplicated(.$town_name),] # distinct did not seen to work
 
   
 
@@ -37,12 +36,13 @@ stn <- st_read('shp/geomark_point.shp', stringsAsFactors = FALSE) %>%
   select(town_name,
          town_val,
          cfa_tfb = TFB_DIST) %>%
-  mutate(cfa_tfb = tools::toTitleCase(tolower(cfa_tfb)))
+  mutate(cfa_tfb = tools::toTitleCase(tolower(cfa_tfb))) %>%
+  st_cast('POINT')
 
-st_geometry(stn) <- NULL  
+#st_geometry(stn) <- NULL  
 
-towns2 <- bind_rows(towns, stn) %>%
-  distinct()
+towns2 <- rbind(stn, towns) %>%
+  .[!duplicated(.$town_name),] # distinct did not seen to work
 
 
 
