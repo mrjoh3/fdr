@@ -347,3 +347,115 @@ fdr_images <- function(mobile){
   return(tl)  
   
 }
+
+
+
+render_current <- function(statewide, towns, location, buffer = 40) {
+  
+  sel <- towns %>% filter(town_val == location) %>% 
+    st_transform(3111)
+  
+  # current situation within 20km
+  cur = sel %>% st_buffer(dist = buffer * 1000) %>% 
+    st_intersection(statewide) %>%
+    mutate(dist = st_distance(., sel),
+           dist = round(units::set_units(dist, km), 1)) %>%
+    arrange(as.numeric(dist))
+  
+  if (nrow(cur) == 0) {
+    return(
+      tagList(div(style = 'padding: 30px;',
+                  tags$hr(),
+                  h3('Current Situation'),
+                  p(glue('There are currently no incidents or warnings within {buffer} km of your selected location'),
+                    'See ', tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
+                    ' for a statewide view.'))
+      )
+    )
+  } else {
+    
+    # burn area
+    ba <- cur %>% 
+      filter(feedType == 'burn-area') %>%
+      mutate(area = st_area(.),
+             area = round(units::set_units(area, ha), 2)) %>% 
+      select(status, location, dist, area)
+    
+    # warnings
+    wn <- cur %>% 
+      filter(feedType == 'warning') %>% 
+      select(status, sourceTitle, location, dist)
+    
+    # incidents
+    inc <- cur %>% 
+      filter(feedType == 'incident', 
+             category2 != 'Total Fire Ban') %>% 
+      select(status, location, category2, resources, sizeFmt, dist)
+    
+    # tfb
+    tfb <- cur %>% filter(feedType == 'incident', category2 == 'Total Fire Ban')
+    
+    # combine in list
+    comb = list(tfb = tfb,
+                warnings = wn,
+                incidents = inc,
+                burnarea = ba)
+    
+    # drop ellements with no rows returned
+    comb[sapply(comb, nrow) == 0]  <- NULL
+    
+    cs <- lapply(1:length(comb), function(x){
+      tnm <- names(comb)[x] # table name
+      df <- comb[[x]]
+      st_geometry(df) <- NULL
+      
+      if (tnm == 'tfb') {
+        return(tagList(
+          h4('Total Fire Ban'),
+          p(df[['webHeadline']][1],
+            'For more details see ',
+            tags$a(href = df[['url']][1], df[['url']][1]))
+        ))
+      } else if (tnm == 'incidents') {
+        return(
+          tagList(
+            h4('Incidents'),
+            #p(glue('All current Incidents within {buffer} km')),
+            HTML(knitr::kable(df, format = 'html', table.attr = glue("id=\"{tnm}\"")))
+          )
+        )
+      } else if (tnm == 'burnarea') {
+        return(
+          tagList(
+            h4('Burnt Area'),
+            #p(glue('Burnt Area within {buffer} km')),
+            HTML(knitr::kable(df, format = 'html', table.attr = glue("id=\"{tnm}\"")))
+          )
+        )
+      } else if (tnm == 'warnings') {
+        return(
+          tagList(
+            h4('Warnings'),
+            #p(glue('All Warnings within {buffer} km')),
+            HTML(knitr::kable(df, format = 'html', table.attr = glue("id=\"{tnm}\"")))
+          )
+        )
+      }
+    })
+    
+    return(
+      tagList(
+        div(style = 'padding: 30px;',
+            tags$hr(),
+            h3(glue('Current Situation within {buffer} km')),
+            tagList(cs)
+        )
+      )
+    )
+    
+  }
+
+  
+
+  
+}

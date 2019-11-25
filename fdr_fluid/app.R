@@ -30,6 +30,21 @@ cfa__lu <- gsub(' ', '', tolower(unique(towns$cfa_tfb))) %>% as.list() %>%
 town_lu <- towns$town_val %>% as.list() %>%
   setNames(towns$town_name)
 
+# get current situation
+statewide = st_read('https://www.emergency.vic.gov.au/public/osom-geojson.json', stringsAsFactors = FALSE) %>% 
+  st_transform(3111) %>%
+  select(feedType,
+         sourceTitle,
+         cap,
+         category1, category2,
+         status,
+         location,
+         incidentFeatures,
+         webHeadline,
+         url,
+         resources, 
+         sizeFmt)
+
 fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.9.0",
                                           src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/"),
                                           script = "js/fontawesome.min.js", stylesheet = "css/fontawesome.min.css"
@@ -93,7 +108,10 @@ ui <- shinyUI(fluidPage(
       uiOutput('fdr_images')
     ),
   fluidRow(
-    column(12,
+      uiOutput('current_incidents')
+  ),
+  fluidRow(
+    div(style = 'padding: 30px;',
            tags$hr(),
            uiOutput('sources'),
            tags$hr()
@@ -443,6 +461,14 @@ server <- function(input, output, session) {
       
       output$fdr_images <- renderUI({
         fdr_images(input$isMobile)
+      })
+      
+      incProgress(.05, 'Current Situation')
+      
+      output$current_incidents <- renderUI({
+        
+        render_current(statewide, towns, dat$location, buffer = 30)
+        
       })
       
       incProgress(.05, 'Data Sources')
