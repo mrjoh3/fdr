@@ -421,7 +421,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
           tagList(
             h4('Incidents'),
             #p(glue('All current Incidents within {buffer} km')),
-            HTML(knitr::kable(df, format = 'html', table.attr = glue("id=\"{tnm}\"")))
+            HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
           )
         )
       } else if (tnm == 'burnarea') {
@@ -429,7 +429,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
           tagList(
             h4('Burnt Area'),
             #p(glue('Burnt Area within {buffer} km')),
-            HTML(knitr::kable(df, format = 'html', table.attr = glue("id=\"{tnm}\"")))
+            HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
           )
         )
       } else if (tnm == 'warnings') {
@@ -437,7 +437,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
           tagList(
             h4('Warnings'),
             #p(glue('All Warnings within {buffer} km')),
-            HTML(knitr::kable(df, format = 'html', table.attr = glue("id=\"{tnm}\"")))
+            HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
           )
         )
       }
