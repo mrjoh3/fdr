@@ -5,3 +5,22 @@
 .c3-target-value text {
    fill: orange !important;
 }
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.current {
+  padding: 10px; 
+  width: 100%;
+}
+
+.current th, .current td {
+  border-bottom: 1px solid grey;
+  padding: 5px;
+}
+
+.current th {
+  font-weight: bold;
+}

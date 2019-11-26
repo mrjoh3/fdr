@@ -12,21 +12,21 @@ mobileDetect <- function(inputId, value = 0) {
 
 
 # 4 plots in a box UI (rendered inside server , renderUI)
-c3_grid_UI <- function(label, cats){
+c3_grid_UI <- function(label, location, cats){
   
   cats_L <- tolower(word(unique(cats), 1))
   
   tagList(
     fluidRow(column(6,
                     h5(cats[1]),
-                    c3Output(glue("{cats_L[1]}{gsub('-', '', label)}", height = 80)),
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[1]}{gsub('-', '', label)}", height = 80)),
                     h5(cats[2]),
-                    c3Output(glue("{cats_L[2]}{gsub('-', '', label)}", height = 80))),
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[2]}{gsub('-', '', label)}", height = 80))),
              column(6,
                     h5(cats[3]),
-                    c3Output(glue("{cats_L[3]}{gsub('-', '', label)}", height = 80)),
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[3]}{gsub('-', '', label)}", height = 80)),
                     h5(cats[4]),
-                    c3Output(glue("{cats_L[4]}{gsub('-', '', label)}", height = 80)))
+                    c3Output(glue("{gsub('-', '', location)}{cats_L[4]}{gsub('-', '', label)}", height = 80)))
              )
   )
   
@@ -35,12 +35,12 @@ c3_grid_UI <- function(label, cats){
 
 
 
-c3_grid_server <- function(input, output, session, wind, label, cats){
+c3_grid_server <- function(input, output, session, wind, label, location, cats){
   
   cats_L <- tolower(word(unique(cats), 1))
   
   Map(function(pl){
-    output[[glue("{cats_L[pl]}{gsub('-', '', label)}")]] <- renderC3({
+    output[[glue("{gsub('-', '', location)}{cats_L[pl]}{gsub('-', '', label)}")]] <- renderC3({
       
       c3df <- wind %>%
         filter(date == label,
@@ -111,7 +111,11 @@ get_precis <- function(url){
   days <- doc %>%
     html_nodes('.day')
   
-  dates <- seq(Sys.Date(), length.out = length(days), by = 1)
+  forcast_datetime <- doc %>% html_node('.date') %>% html_text() %>%
+    as.POSIXct(., format = "Forecast issued at %I:%M %p AEDT on %a %d %b %Y", tz = 'AEDT')
+  forcast_date <- as.Date(forcast_datetime)
+  
+  dates <- seq(forcast_date, length.out = length(days), by = 1)
   
   obs_url <- doc %>% html_nodes('.obs a') %>% html_attr('href')
   
@@ -125,6 +129,7 @@ get_precis <- function(url){
     precis <- days[[n]]  %>% html_node('p') %>% html_text()
     uv <- days[[n]]  %>% html_node('p.alert') %>% html_text()
     names <- dd %>% html_attr('class') 
+    #hd <- days[[n]] %>% html_node('h2') %>% html_text() %>% as.Date(., format = '%a %d %b %Y')
     
     names[is.na(names)] <- 'X'
     
@@ -141,14 +146,17 @@ get_precis <- function(url){
              area = area,
              precis = precis,
              uv = uv, 
-             date = dates[n]) %>%
+             date = dates[n],
+             forcast_datetime = forcast_datetime) %>%
       separate(amt, c('lower_precipitation_limit', 'upper_precipitation_limit'), sep = ' to ', remove = TRUE) %>%
       mutate(upper_precipitation_limit = gsub(' mm', '', upper_precipitation_limit),
+             pop = str_trim(pop, 'both'),
              uv = unlist(str_extract_all(uv, '[1-9]')) %>% .[length(.)]) %>%
       mutate_at(c('lower_precipitation_limit', 'upper_precipitation_limit', 'uv'), as.numeric) 
     
   }) %>% bind_rows() %>%
     select(date,
+           forcast_datetime,
            minimum_temperature = min,
            maximum_temperature = max,
            lower_precipitation_limit,
@@ -171,7 +179,7 @@ get_latest <- function(url){
   doc <- read_html(url)
   
   dt <- doc %>% html_nodes('h2.pointer span') %>% html_text() %>%
-    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.')
+    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.', tz = 'AEDT')
   
   tbls <- doc %>% html_table()
   tdy <- tbls[[3]]
@@ -195,5 +203,259 @@ get_latest <- function(url){
                    `Relative humidity (%)`,
                    `Wind speed  km/h`),
                  "meas")
+  
+}
+
+
+get_fdr <- function(url){
+  
+  url %>%
+    tidyfeed(.) %>%
+    mutate(date = as.Date(gsub('Today, |Tomorrow, ', '', item_title), '%a, %d %b %Y'),
+           title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
+           start = date,
+           end = date + days(1),
+           day = wday(start, label = TRUE),
+           week = isoweek(start),
+           rendering = 'background',
+           color = case_when(
+             title == 'CODE RED' ~ 'black', # should be same as extreme but with black cross hatch
+             title == 'EXTREME' ~ 'red', #ee2e24',
+             title == 'SEVERE' ~ 'orange', #f89829',
+             title == 'VERY HIGH' ~ 'yellow', #fff002',
+             title == 'HIGH' ~ 'blue', #00adef',
+             title == 'LOW-MODERATE' ~ 'green' #79c141'
+           ),
+           fdr_color = case_when(
+             title == 'CODE RED' ~ '#710d08', # should be same as extreme but with black cross hatch
+             title == 'EXTREME' ~ '#ee2e24',
+             title == 'SEVERE' ~ '#f89829',
+             title == 'VERY HIGH' ~ '#fff002',
+             title == 'HIGH' ~ '#00adef',
+             title == 'LOW-MODERATE' ~ '#79c141'
+           )) %>%
+    filter(!is.na(date)) %>%
+    rowwise() %>%
+    mutate(tfb = read_html(item_description) %>% html_node('strong') %>% html_text(),
+           tfb = ifelse(tfb == 'not', '', tfb)) %>%
+    ungroup() %>%
+    distinct()
+  
+}
+
+fdr_colour <- c('LOW-MODERATE' = '#79c141',
+                'HIGH' = '#00adef',
+                'VERY HIGH' = '#fff002',
+                'SEVERE' = '#f89829',
+                'EXTREME' = '#ee2e24',
+                'CODE RED' = '#710d08')
+
+
+calc_fdi <- function(df, mobile = FALSE){
+  
+  df %>% 
+    filter(meas %in% c('Relative humidity (%)',
+                       'Air temperature (°C)',
+                       'Wind speed  km/h',
+                       'Forest fuel dryness factor')) %>%
+    mutate(meas = tolower(word(meas, 1))) %>%
+    select(time, 
+           now,
+           meas,
+           value) %>%
+    pivot_wider(names_from = meas, values_from = value) %>%
+    arrange(time) %>%
+    fill(forest, .direction = 'updown') %>%
+    mutate(fdi = 2 * exp(-0.45 + (0.987 * log(forest)) + (0.0338 * air) - (0.0345 * relative) + (0.0234 * wind)),
+           fdr = case_when(
+             fdi > 94 ~ 'CODE RED', 
+             fdi > 74 ~ 'EXTREME',
+             fdi > 49 ~ 'SEVERE',
+             fdi > 24 ~ 'VERY HIGH',
+             fdi > 11 ~ 'HIGH',
+             fdi > 0  ~ 'LOW-MODERATE'
+           )) %>% 
+    filter(!(is.na(now) & is.na(fdi))) %>% 
+    mutate(cnk = ifelse(fdr != lead(fdr, 1), time, NA)) %>%
+    fill(cnk, .direction = 'up') %>% 
+      # ggplot(data = ., aes(x = t2, ymax = fdi, ymin = 0, group = cnk, fill = fdr)) +
+      #   geom_ribbon()
+      # ggplot(data=dat3, aes(x=date, ymax=count, ymin=0, group=df, fill=month)) + geom_ribbon()
+    group_by(cnk, fdr) %>% 
+    summarise(xmin = min(time),
+              xmax = max(time),
+              fdi = mean(fdi)) %>% 
+    ungroup() %>%
+    mutate(xmax = lead(xmin, 1),
+           xmax = if_else(is.na(xmax), 
+                          as.POSIXct(glue('{as.Date(xmin) + days(1)} 00:00"))'), tz = 'AEDT'), xmax), # catch mising last value
+           fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>% #View()
+    ggplot() +
+      geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = fdr)) +
+      scale_color_manual(values = fdr_colour,
+                         aesthetics = c("colour", "fill")) +
+      theme_minimal() +
+    theme(axis.line=element_blank(),
+          axis.text=element_text(colour = "lightgrey", 
+                                 size = ifelse(mobile, 30, 14)),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          #axis.ticks.x = element_line(),
+          #axis.title.x=element_blank(),
+          axis.title.y=element_blank(),
+          legend.position="none",
+          panel.background = element_rect(fill = "transparent", colour = NA),
+          plot.background = element_rect(fill = "transparent", colour = NA),
+          panel.border=element_blank(),
+          panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank())
+    
+}
+
+
+fdr_images <- function(mobile){
+  
+  if (mobile) {
+    
+    tl <- div(style = 'padding: 30px;',
+        tags$hr(),
+        h3('Fire Danger Ratings'),
+        tabsetPanel(
+          tabPanel(h5('Forest'),
+                   tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
+          tabPanel(h5('Grassland'),
+                   tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
+        )
+    )
+    
+  } else {
+    
+    tl <- div(style = 'padding: 30px;',
+              tags$hr(),
+              h3('Fire Danger Ratings'),
+              column(6,
+                h5('Forest'),
+                tags$img(src = 'http://www.bom.gov.au/fwo/IDV65406.png', width = '95%')),
+              column(6,
+                h5('Grassland'),
+                tags$img(src = 'http://www.bom.gov.au/fwo/IDV65426.png', width = '95%'))
+              
+    )
+    
+  }
+    
+  return(tl)  
+  
+}
+
+
+
+render_current <- function(statewide, towns, location, buffer = 40) {
+  
+  sel <- towns %>% filter(town_val == location) %>% 
+    st_transform(3111)
+  
+  # current situation within 20km
+  cur = sel %>% st_buffer(dist = buffer * 1000) %>% 
+    st_intersection(statewide) %>%
+    mutate(dist = st_distance(., sel),
+           dist = round(units::set_units(dist, km), 1)) %>%
+    arrange(as.numeric(dist))
+  
+  if (nrow(cur) == 0) {
+    return(
+      tagList(div(style = 'padding: 30px;',
+                  tags$hr(),
+                  h3('Current Situation'),
+                  p(glue('There are currently no incidents or warnings within {buffer} km of your selected location'),
+                    'See ', tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
+                    ' for a statewide view.'))
+      )
+    )
+  } else {
+    
+    # burn area
+    ba <- cur %>% 
+      filter(feedType == 'burn-area') %>%
+      mutate(area = st_area(.),
+             area = round(units::set_units(area, ha), 2)) %>% 
+      select(status, location, dist, area)
+    
+    # warnings
+    wn <- cur %>% 
+      filter(feedType == 'warning') %>% 
+      select(status, sourceTitle, location, dist)
+    
+    # incidents
+    inc <- cur %>% 
+      filter(feedType == 'incident', 
+             category2 != 'Total Fire Ban') %>% 
+      select(status, location, category2, resources, sizeFmt, dist)
+    
+    # tfb
+    tfb <- cur %>% filter(feedType == 'incident', category2 == 'Total Fire Ban')
+    
+    # combine in list
+    comb = list(tfb = tfb,
+                warnings = wn,
+                incidents = inc,
+                burnarea = ba)
+    
+    # drop ellements with no rows returned
+    comb[sapply(comb, nrow) == 0]  <- NULL
+    
+    cs <- lapply(1:length(comb), function(x){
+      tnm <- names(comb)[x] # table name
+      df <- comb[[x]]
+      st_geometry(df) <- NULL
+      
+      if (tnm == 'tfb') {
+        return(tagList(
+          h4('Total Fire Ban'),
+          p(df[['webHeadline']][1],
+            'For more details see ',
+            tags$a(href = df[['url']][1], df[['url']][1]))
+        ))
+      } else if (tnm == 'incidents') {
+        return(
+          tagList(
+            h4('Incidents'),
+            #p(glue('All current Incidents within {buffer} km')),
+            HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
+          )
+        )
+      } else if (tnm == 'burnarea') {
+        return(
+          tagList(
+            h4('Burnt Area'),
+            #p(glue('Burnt Area within {buffer} km')),
+            HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
+          )
+        )
+      } else if (tnm == 'warnings') {
+        return(
+          tagList(
+            h4('Warnings'),
+            #p(glue('All Warnings within {buffer} km')),
+            HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
+          )
+        )
+      }
+    })
+    
+    return(
+      tagList(
+        div(style = 'padding: 30px;',
+            tags$hr(),
+            h3(glue('Current Situation within {buffer} km')),
+            tagList(cs)
+        )
+      )
+    )
+    
+  }
+
+  
+
   
 }
