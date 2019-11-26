@@ -383,13 +383,14 @@ render_current <- function(statewide, towns, location, buffer = 40) {
     
     # warnings
     wn <- cur %>% 
-      filter(feedType == 'warning') %>% 
+      filter(feedType == 'warning' | status == 'warning') %>% 
       select(status, sourceTitle, location, dist)
     
     # incidents
     inc <- cur %>% 
       filter(feedType == 'incident', 
-             category2 != 'Total Fire Ban') %>% 
+             category2 != 'Total Fire Ban',
+             status != 'warning') %>% 
       select(status, location, category2, resources, sizeFmt, dist)
     
     # tfb
