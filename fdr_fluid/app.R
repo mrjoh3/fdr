@@ -37,22 +37,22 @@ town_lu <- towns$town_val %>% as.list() %>%
 # get current situation
 statewide = st_read('https://www.emergency.vic.gov.au/public/osom-geojson.json', stringsAsFactors = FALSE) %>% 
   st_transform(3111) %>%
-  mutate(sizeFmt = as.character(sizeFmt)) %>%
+  mutate(sizeFmt = as.character(sizeFmt),
+         sizeFmt = ifelse(sizeFmt == 'character(0)', '', sizeFmt)) %>%
   st_make_valid() %>%
-  group_by(
-         sourceId,
+  select(sourceId,
          feedType,
          sourceTitle,
          cap,
-         category1, category2,
+         category1, 
+         category2,
          status,
          location,
          incidentFeatures,
          webHeadline,
          url,
          resources, 
-         sizeFmt) %>%
-  summarise(geometry = st_union(geometry)) 
+         sizeFmt)
 
 fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.9.0",
                                           src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/"),
