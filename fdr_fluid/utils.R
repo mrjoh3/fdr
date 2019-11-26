@@ -370,9 +370,9 @@ render_current <- function(statewide, towns, location, buffer = 40) {
       tagList(div(style = 'padding: 30px;',
                   tags$hr(),
                   h3('Current Situation'),
-                  p(glue('There are currently no incidents or warnings within {buffer} km of your selected location'),
-                    'See ', tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
-                    ' for a statewide view.'))
+                  p(glue('There are currently no incidents or warnings within {buffer} km of your selected location. ')),
+                  p('See ', tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
+                  ' for a statewide view.'))
       )
     )
   } else {
@@ -387,14 +387,14 @@ render_current <- function(statewide, towns, location, buffer = 40) {
     # warnings
     wn <- cur %>% 
       filter(feedType == 'warning' | status == 'warning') %>% 
-      select(status, sourceTitle, location, dist)
+      select(status, type = sourceTitle, location, dist)
     
     # incidents
     inc <- cur %>% 
       filter(feedType == 'incident', 
              category2 != 'Total Fire Ban',
              status != 'warning') %>% 
-      select(status, location, category2, resources, sizeFmt, dist)
+      select(status, location, category = category2, resources, size = sizeFmt, dist)
     
     # tfb
     tfb <- cur %>% filter(feedType == 'incident', category2 == 'Total Fire Ban')
@@ -452,7 +452,9 @@ render_current <- function(statewide, towns, location, buffer = 40) {
         div(style = 'padding: 30px;',
             tags$hr(),
             h3(glue('Current Situation within {buffer} km')),
-            tagList(cs)
+            tagList(cs),
+            p('See ', tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
+              ' for a statewide view.')
         )
       )
     )
