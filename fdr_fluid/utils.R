@@ -278,6 +278,7 @@ calc_fdi <- function(df, mobile = FALSE){
     filter(!(is.na(now) & is.na(fdi))) %>% 
     mutate(cnk = ifelse(fdr != lead(fdr, 1), time, NA)) %>%
     fill(cnk, .direction = 'up') %>% 
+    mutate(cnk = ifelse(is.na(cnk), max(cnk, na.rm = T) + 999, cnk)) %>%  # last cnk always NA if long too much missing data
       # ggplot(data = ., aes(x = t2, ymax = fdi, ymin = 0, group = cnk, fill = fdr)) +
       #   geom_ribbon()
       # ggplot(data=dat3, aes(x=date, ymax=count, ymin=0, group=df, fill=month)) + geom_ribbon()
@@ -285,11 +286,13 @@ calc_fdi <- function(df, mobile = FALSE){
     summarise(xmin = min(time),
               xmax = max(time),
               fdi = mean(fdi)) %>% 
-    ungroup() %>%
-    mutate(xmax = lead(xmin, 1),
-           xmax = if_else(is.na(xmax), 
-                          as.POSIXct(glue('{as.Date(xmin) + days(1)} 00:00"))'), tz = 'AEDT'), xmax), # catch mising last value
-           fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>% #View()
+    ungroup() %>% 
+    mutate(xmax = lead(xmin, 1), 
+           xmax = if_else(is.na(xmax),
+                          #as.POSIXct(glue('{as.Date(xmin) + days(1)} 00:00"))'), tz = 'AEDT'), 
+                          as.POSIXct(max(df$time), tz = 'AEDT'), 
+                          xmax), # catch mising last value
+           fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>%
     ggplot() +
       geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = fdr)) +
       scale_color_manual(values = fdr_colour,
