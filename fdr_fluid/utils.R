@@ -365,14 +365,20 @@ render_current <- function(statewide, towns, location, buffer = 40) {
            dist = round(units::set_units(dist, km), 1)) %>%
     arrange(as.numeric(dist))
   
+  warnBox <- box(solidHeader = TRUE, background = 'black', width = 12,
+                 p('WARNING: If you are likely to be impacted by an incident see original source data at ', 
+                   tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
+                   '. '))
+  
   if (nrow(cur) == 0) {
     return(
       tagList(div(style = 'padding: 30px;',
                   tags$hr(),
                   h3('Current Situation'),
-                  p(glue('There are currently no incidents or warnings within {buffer} km of your selected location. ')),
-                  p('See ', tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
-                  ' for a statewide view.'))
+                  p(glue('There are currently no incidents or warnings within {buffer} km of your selected location. '),
+                    tags$br(),
+                    warnBox))
+                    
       )
     )
   } else {
@@ -453,8 +459,8 @@ render_current <- function(statewide, towns, location, buffer = 40) {
             tags$hr(),
             h3(glue('Current Situation within {buffer} km')),
             tagList(cs),
-            p('See ', tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
-              ' for a statewide view.')
+            tags$br(),
+            warnBox
         )
       )
     )
