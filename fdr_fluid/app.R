@@ -22,6 +22,7 @@ library(ggdark)
 library(colortools)
 library(emojifont)
 library(c3)
+library(leaflet)
 
 
 source('utils.R')

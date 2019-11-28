@@ -414,6 +414,35 @@ render_current <- function(statewide, towns, location, buffer = 40) {
     # drop ellements with no rows returned
     comb[sapply(comb, nrow) == 0]  <- NULL
     
+    # create leaflet map
+    map <- leaflet() %>%
+      addProviderTiles("CartoDB.Positron", group = 'Default') %>%
+      addProviderTiles("Esri.WorldImagery", group = 'Aerial') %>%
+      addProviderTiles("OpenStreetMap.Mapnik", group = 'Street') %>%
+      addMarkers(data = st_transform(sel, 4236)) %>%
+      addPolylines(data = st_transform(st_buffer(sel, buffer * 1000), 4236),
+                   color = 'red',
+                   weight = 1) %>%
+      addLayersControl(
+        baseGroups = c("Default", "Aerial", "Street"),
+        overlayGroups = c('Incidents', 'Burnt Area'),
+        options = layersControlOptions(collapsed = TRUE)
+      )
+    
+    inc_icon <- makeAwesomeIcon(icon= 'fire', markerColor = 'red', iconColor = 'white', library = "fa")
+    
+    if (nrow(inc) > 0) {
+      map <- map %>% 
+        addAwesomeMarkers(data = st_transform(inc, 4236), 
+                          icon = inc_icon,
+                          group = 'Incident')
+    }
+    if (nrow(ba) > 0) map <- map %>% addPolygons(data = st_transform(ba, 4236), 
+                                                 weight = 1,
+                                                 color = 'black',
+                                                 fillColor = 'black',
+                                                 group = 'Burnt Area')
+    
     cs <- lapply(1:length(comb), function(x){
       tnm <- names(comb)[x] # table name
       df <- comb[[x]]
@@ -458,6 +487,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
         div(style = 'padding: 30px;',
             tags$hr(),
             h3(glue('Current Situation within {buffer} km')),
+            map,
             tagList(cs),
             tags$br(),
             warnBox
