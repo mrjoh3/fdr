@@ -458,7 +458,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
       map <- map %>% 
         addPolygons(data = st_transform(ba, 4236), 
                     weight = 1,
-                    color = 'black',
+                    color = 'red',
                     fillColor = 'black',
                     popup = ~paste(sep = '<br>',
                                    glue('<strong>Status: {status}</strong>'),
