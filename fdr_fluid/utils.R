@@ -399,8 +399,9 @@ render_current <- function(statewide, towns, location, buffer = 40) {
     inc <- cur %>% 
       filter(feedType == 'incident', 
              category2 != 'Total Fire Ban',
+             category1 != 'Met',
              status != 'warning') %>% 
-      select(status, location, category = category2, resources, size = sizeFmt, dist)
+      select(status, location, category = category2, category1, resources, size = sizeFmt, dist)
     
     # tfb
     tfb <- cur %>% filter(feedType == 'incident', category2 == 'Total Fire Ban')
@@ -419,7 +420,8 @@ render_current <- function(statewide, towns, location, buffer = 40) {
       addProviderTiles("CartoDB.Positron", group = 'Default') %>%
       addProviderTiles("Esri.WorldImagery", group = 'Aerial') %>%
       addProviderTiles("OpenStreetMap.Mapnik", group = 'Street') %>%
-      addMarkers(data = st_transform(sel, 4236)) %>%
+      addMarkers(data = st_transform(sel, 4236),
+                 popup = ~glue('<strong>{town_name}</strong>')) %>%
       addPolylines(data = st_transform(st_buffer(sel, buffer * 1000), 4236),
                    color = 'red',
                    weight = 1) %>%
@@ -429,19 +431,41 @@ render_current <- function(statewide, towns, location, buffer = 40) {
         options = layersControlOptions(collapsed = TRUE)
       )
     
-    inc_icon <- makeAwesomeIcon(icon= 'fire', markerColor = 'red', iconColor = 'white', library = "fa")
+    inc_icon <- awesomeIconList(
+      Fire = makeAwesomeIcon(icon= 'fire', markerColor = 'red', iconColor = '#FFFFFF', library = "fa"),
+      `Planned Burn` = makeAwesomeIcon(icon= 'fire', markerColor = 'darkred', iconColor = '#FFFFFF', library = "fa"),
+      `Building Damage` = makeAwesomeIcon(icon= 'home', markerColor = 'lightgray', iconColor = '#FFFFFF', library = "fa"),
+      `Accident / Rescue` = makeAwesomeIcon(icon= 'car', markerColor = 'orange', iconColor = '#FFFFFF', library = "fa"),
+      `Tree Down` = makeAwesomeIcon(icon= 'tree', markerColor = 'green', iconColor = '#FFFFFF', library = "fa"),
+      Other = makeAwesomeIcon(icon= 'question-circle', markerColor = 'purple', iconColor = '#FFFFFF', library = "fa")
+    )
     
     if (nrow(inc) > 0) {
       map <- map %>% 
-        addAwesomeMarkers(data = st_transform(inc, 4236), 
-                          icon = inc_icon,
+        addAwesomeMarkers(data = st_transform(inc, 4236) %>% st_cast("POINT"), 
+                          icon = ~inc_icon[category1],
+                          popup = ~paste(sep = '<br>',
+                                        glue('<strong>{status}</strong>'),
+                                        ifelse(category1 == category,
+                                               glue('Category: {category1}'),
+                                               glue('Category: {category1} - {category}')),
+                                        glue('Location: {location}'),
+                                        glue('Resources: {resources}'),
+                                        glue('Size: {size}')),
                           group = 'Incident')
     }
-    if (nrow(ba) > 0) map <- map %>% addPolygons(data = st_transform(ba, 4236), 
-                                                 weight = 1,
-                                                 color = 'black',
-                                                 fillColor = 'black',
-                                                 group = 'Burnt Area')
+    if (nrow(ba) > 0) {
+      map <- map %>% 
+        addPolygons(data = st_transform(ba, 4236), 
+                    weight = 1,
+                    color = 'black',
+                    fillColor = 'black',
+                    popup = ~paste(sep = '<br>',
+                                   glue('<strong>Status: {status}</strong>'),
+                                   glue('Location: {location}'),
+                                   glue('Burnt Area (Ha): {area}')),
+                    group = 'Burnt Area')
+      }
     
     cs <- lapply(1:length(comb), function(x){
       tnm <- names(comb)[x] # table name
@@ -460,7 +484,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
           tagList(
             h4('Incidents'),
             #p(glue('All current Incidents within {buffer} km')),
-            HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
+            HTML(knitr::kable(df %>% select(-category1), format = 'html', table.attr = "class=\"current\""))
           )
         )
       } else if (tnm == 'burnarea') {
