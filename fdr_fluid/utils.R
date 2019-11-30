@@ -211,7 +211,8 @@ get_fdr <- function(url){
   
   url %>%
     tidyfeed(.) %>%
-    mutate(date = as.Date(gsub('Today, |Tomorrow, ', '', item_title), '%a, %d %b %Y'),
+    mutate(item_title = gsub('Today, |Tomorrow, ', '', item_title),
+           date = as.Date(item_title, '%a, %d %b %Y'),
            title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
            start = date,
            end = date + days(1),
