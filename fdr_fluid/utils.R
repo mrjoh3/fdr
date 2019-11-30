@@ -33,8 +33,6 @@ c3_grid_UI <- function(label, location, cats){
 }
 
 
-
-
 c3_grid_server <- function(input, output, session, wind, label, location, cats){
   
   cats_L <- tolower(word(unique(cats), 1))
@@ -353,7 +351,6 @@ fdr_images <- function(mobile){
 }
 
 
-
 render_current <- function(statewide, towns, location, buffer = 40) {
   
   sel <- towns %>% filter(town_val == location) %>% 
@@ -368,8 +365,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
   
   warnBox <- box(solidHeader = TRUE, background = 'black', width = 12,
                  p('WARNING: If you are likely to be impacted by an incident see original source data at ', 
-                   tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/'),
-                   '. '))
+                   tags$a(href = 'http://emergency.vic.gov.au/respond/', 'http://emergency.vic.gov.au/respond/')))
   
   if (nrow(cur) == 0) {
     return(
