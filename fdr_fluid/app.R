@@ -489,23 +489,20 @@ server <- function(input, output, session) {
           h3('Data Sources'),
           p('All data is sourced when you first load the page via a combination of RSS feeds and webscraping. ',
             'The links here are the reliable sources, this page merely groups useful information from these sources.'),
+          
           h4('Vic Emergency'),
-          h5('Warnings, Incidents and Burnt Area'),
-          tags$a(href = 'http://emergency.vic.gov.au/respond/', # explore adding bounding box later for zoom to area
-                 'http://emergency.vic.gov.au/respond/'),
+          h5(tags$a(href = 'http://emergency.vic.gov.au/respond/', # explore adding bounding box later for zoom to area
+                    'Warnings, Incidents and Burnt Area')),
+          
           h4('CFA'),
-          h5('Fire Danger Ratings:'),
-          tags$a(href = glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district'),
-                 glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district')),
-          h5('Fire Danger Ratings (RSS):'),
-          tags$a(href = dat$furl, dat$furl),
+          h5(tags$a(href = glue('https://www.cfa.vic.gov.au/warnings-restrictions/{dat$cfa}-fire-district'),
+                    'Fire Danger Ratings')),
+          h5(tags$a(href = dat$furl, 'Fire Danger Ratings (RSS)')),
+          
           h4('BOM'),
-          h5('Extended Forecast (7 day):'),
-          tags$a(href = dat$surl, dat$surl),
-          h5('Detailed 3-hourly Forecast:'),
-          tags$a(href = dat$wurl, dat$wurl),
-          h5('Current and Past Weather:'),
-          tags$a(href = dat$fc$obs_url[1], dat$fc$obs_url[1])
+          h5(tags$a(href = dat$surl, 'Extended Forecast (7 day)')),
+          h5(tags$a(href = dat$wurl, 'Detailed 3-hourly Forecast')),
+          h5(tags$a(href = dat$fc$obs_url[1], 'Current and Past Weather'))
           
         )
         
