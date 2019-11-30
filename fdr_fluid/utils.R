@@ -473,32 +473,32 @@ render_current <- function(statewide, towns, location, buffer = 40) {
       st_geometry(df) <- NULL
       
       if (tnm == 'tfb') {
-        return(tagList(
-          h4('Total Fire Ban'),
+        return(tabPanel(
+          h5('Total Fire Ban'),
           p(df[['webHeadline']][1],
             'For more details see ',
             tags$a(href = df[['url']][1], df[['url']][1]))
         ))
       } else if (tnm == 'incidents') {
         return(
-          tagList(
-            h4('Incidents'),
+          tabPanel(
+            h5('Incidents'),
             #p(glue('All current Incidents within {buffer} km')),
             HTML(knitr::kable(df %>% select(-category1), format = 'html', table.attr = "class=\"current\""))
           )
         )
       } else if (tnm == 'burnarea') {
         return(
-          tagList(
-            h4('Burnt Area'),
+          tabPanel(
+            h5('Burnt Area'),
             #p(glue('Burnt Area within {buffer} km')),
             HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
           )
         )
       } else if (tnm == 'warnings') {
         return(
-          tagList(
-            h4('Warnings'),
+          tabPanel(
+            h5('Warnings'),
             #p(glue('All Warnings within {buffer} km')),
             HTML(knitr::kable(df, format = 'html', table.attr = "class=\"current\""))
           )
@@ -510,9 +510,10 @@ render_current <- function(statewide, towns, location, buffer = 40) {
       tagList(
         div(style = 'padding: 30px;',
             tags$hr(),
-            h3(glue('Current Situation within {buffer} km')),
+            h3(glue('Current Situation {buffer} km')),
             map,
-            tagList(cs),
+            tags$br(),
+            do.call(tabsetPanel, cs),
             tags$br(),
             warnBox
         )
