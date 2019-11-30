@@ -55,14 +55,14 @@ statewide = st_read('https://www.emergency.vic.gov.au/public/osom-geojson.json',
          resources, 
          sizeFmt)
 
-fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.9.0",
-                                          src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/"),
-                                          script = "js/fontawesome.min.js", stylesheet = "css/fontawesome.min.css"
-)
-# fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.1.0",
-#                                             src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.1.0/"),
-#                                             script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
+# fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.9.0",
+#                                           src = c(href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/"),
+#                                           script = "js/fontawesome.min.js", stylesheet = "css/fontawesome.min.css"
 # )
+fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.11.2",
+                                            src = c(href = "www/"),
+                                            script = "js/fontawesome.js", stylesheet = "css/fontawesome.css"
+)
 
 #precis_w <- get_precis_forecast('VIC')
 
