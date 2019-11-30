@@ -434,6 +434,8 @@ render_current <- function(statewide, towns, location, buffer = 40) {
       `Building Damage` = makeAwesomeIcon(icon= 'home', markerColor = 'lightgray', iconColor = '#FFFFFF', library = "fa"),
       `Accident / Rescue` = makeAwesomeIcon(icon= 'car', markerColor = 'orange', iconColor = '#FFFFFF', library = "fa"),
       `Tree Down` = makeAwesomeIcon(icon= 'tree', markerColor = 'green', iconColor = '#FFFFFF', library = "fa"),
+      `Hazardous Material` = makeAwesomeIcon(icon= 'nuclear', markerColor = 'black', iconColor = '#FFFFFF', library = "ion"),
+      Rescue = makeAwesomeIcon(icon= 'first-aid', markerColor = 'darkblue', iconColor = '#FFFFFF', library = "fa"),
       Other = makeAwesomeIcon(icon= 'question-circle', markerColor = 'purple', iconColor = '#FFFFFF', library = "fa")
     )
     
