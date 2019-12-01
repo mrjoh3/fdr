@@ -123,13 +123,18 @@ ui <- shinyUI(fluidPage(
   fluidRow(
     div(style = 'padding: 30px;',
            tags$hr(),
-           uiOutput('sources'),
-           tags$hr()
+           uiOutput('sources')
            )
     #textOutput('isItMobile'),
     #c3Output('test')
+  ),
+  fluidRow(
+    div(style = 'padding: 30px;',
+        tags$hr(),
+        includeMarkdown('about.md'),
+        tags$hr()
   )
-))
+)))
 
 server <- function(input, output, session) {
   
@@ -228,46 +233,7 @@ server <- function(input, output, session) {
         
         incProgress(.30, '3hr Weather Forecast')
         
-        wind <- read_html(wurl) %>%
-          html_table() %>%
-          #.[seq(5, length(.), 5)]%>%
-          #setNames(seq(Sys.Date(), length.out = length(.), by = "1 days")) %>%
-          lapply(., function(df){
-            rename_at(df, vars(1), ~ sub('At|From','meas', .)) %>%
-              mutate_all(as.character)
-          }) %>%
-          setNames(
-            sort(rep(seq(Sys.Date(), length.out = length(.) / 5, by = "1 days"), 5))
-          ) %>%
-          bind_rows(.id = 'date') %>% 
-          gather('time', 'value', -date, -meas) %>%
-          filter(meas %in% c('Relative humidity (%)',
-                             'Air temperature (°C)',
-                             'Wind speed  km/hknots',
-                             'Forest fuel dryness factor',
-                             'Thunderstorms',
-                             'Rain',
-                             'Wind direction')) %>%
-          spread(meas, value) %>%
-          gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
-          # pivot_wide for all pivot_long for numeric
-          mutate(date = as.Date(date),
-                 time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AEST')),
-                 value = ifelse(value == '–', NA, value),
-                 value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
-                                substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
-                                value),
-                 meas = gsub('knots', '', meas),
-                 `Wind direction` = ifelse(meas != 'Wind speed  km/h', NA, `Wind direction`),
-                 Thunderstorms = ifelse(meas == 'Air temperature (°C)' & Thunderstorms == 'Yes', 'fa-bolt', NA),
-                 Rain = ifelse(meas == 'Relative humidity (%)' & Rain == 'Yes', 'fa-tint', NA),
-                 y_max = case_when(
-                   meas == 'Relative humidity (%)' ~ 100,
-                   meas == 'Air temperature (°C)' ~ 50,
-                   meas == 'Wind speed  km/h' ~ 60,
-                   meas == 'Forest fuel dryness factor' ~ 10
-                 ),
-                 value = as.numeric(value))
+        wind <- get_detailed(wurl)
         
         wind_agg <- wind %>%
           filter(meas %in% c('Relative humidity (%)',

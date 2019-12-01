@@ -125,6 +125,7 @@ get_precis <- function(url){
     img <- dd %>% html_node('img') %>% html_attr('src')
     area <- days[[n]] %>% html_node('h3') %>% html_text()
     precis <- days[[n]]  %>% html_node('p') %>% html_text()
+    precis_summary <- days[[n]]  %>% html_node('dd.summary') %>% html_text()
     uv <- days[[n]]  %>% html_node('p.alert') %>% html_text()
     names <- dd %>% html_attr('class') 
     #hd <- days[[n]] %>% html_node('h2') %>% html_text() %>% as.Date(., format = '%a %d %b %Y')
@@ -143,6 +144,7 @@ get_precis <- function(url){
       mutate(image = glue('http://www.bom.gov.au/images/meteye/weather_icons/large/{basename(img[1])}'),
              area = area,
              precis = precis,
+             precis_summary = precis_summary, # present at MIldura but can't find elsewhere
              uv = uv, 
              date = dates[n],
              forcast_datetime = forcast_datetime) %>%
@@ -161,6 +163,7 @@ get_precis <- function(url){
            upper_precipitation_limit,
            probability_of_precipitation = pop,
            precis,
+           precis_summary,
            uv,
            area,
            image) %>%
@@ -201,6 +204,56 @@ get_latest <- function(url){
                    `Relative humidity (%)`,
                    `Wind speed  km/h`),
                  "meas")
+  
+}
+
+
+get_detailed <- function(url){
+  
+  tbls <- read_html(url) %>%
+    html_table() 
+
+  n_tbls <- ifelse(length(tbls)%%5 == 0, 5, 6)
+  
+  tbls %>%
+    lapply(., function(df){
+      if (colnames(df)[1] == '') {colnames(df)[1] <- 'wave'}
+      rename_at(df, vars(1), ~ sub('At|From|wave','meas', .)) %>%
+        #df %>%
+        mutate_all(as.character)
+    }) %>%
+    setNames(
+      sort(rep(seq(Sys.Date(), length.out = length(.) / n_tbls, by = "1 days"), n_tbls))
+    ) %>%
+    bind_rows(.id = 'date') %>% 
+    gather('time', 'value', -date, -meas) %>%
+    filter(meas %in% c('Relative humidity (%)',
+                       'Air temperature (°C)',
+                       'Wind speed  km/hknots',
+                       'Forest fuel dryness factor',
+                       'Thunderstorms',
+                       'Rain',
+                       'Wind direction')) %>%
+    spread(meas, value) %>%
+    gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
+    # pivot_wide for all pivot_long for numeric
+    mutate(date = as.Date(date),
+           time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AEST')),
+           value = ifelse(value == '–', NA, value),
+           value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
+                          substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
+                          value),
+           meas = gsub('knots', '', meas),
+           `Wind direction` = ifelse(meas != 'Wind speed  km/h', NA, `Wind direction`),
+           Thunderstorms = ifelse(meas == 'Air temperature (°C)' & Thunderstorms == 'Yes', 'fa-bolt', NA),
+           Rain = ifelse(meas == 'Relative humidity (%)' & Rain == 'Yes', 'fa-tint', NA),
+           y_max = case_when(
+             meas == 'Relative humidity (%)' ~ 100,
+             meas == 'Air temperature (°C)' ~ 50,
+             meas == 'Wind speed  km/h' ~ 60,
+             meas == 'Forest fuel dryness factor' ~ 10
+           ),
+           value = as.numeric(value))
   
 }
 
