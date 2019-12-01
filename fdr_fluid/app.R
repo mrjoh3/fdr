@@ -40,6 +40,8 @@ statewide = st_read('https://www.emergency.vic.gov.au/public/osom-geojson.json',
   st_transform(3111) %>%
   mutate(sizeFmt = as.character(sizeFmt),
          sizeFmt = ifelse(sizeFmt == 'character(0)', '', sizeFmt)) %>%
+  filter(category2 != 'Sheep Grazier Warning',
+         category2 != 'Strong Wind') %>% # have overlapping geometry might need to separate before join (could be same for wind warning???)
   st_make_valid() %>%
   select(sourceId,
          feedType,
