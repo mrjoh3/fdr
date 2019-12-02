@@ -1,0 +1,10 @@
+#pagewrap {
+    background-color: #fff;
+    position: relative;
+    margin: 0 auto;
+    padding-bottom: 320px;
+    width: 1003px;
+    border-left: 1px solid #999;
+    border-right: 1px solid #999;
+    overflow: hidden;
+}

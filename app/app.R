@@ -94,49 +94,67 @@ ui <- shinyUI(fluidPage(
                        color: orange;
                     }
                   ")),
-  fluidRow( 
-    uiOutput('days'), tags$hr()
-  ),
-  fluidRow(
-    column(7,
-           # https://emergencyprepare.com.au/wp-content/uploads/2018/10/fire-danger-preview-2.png
-           tags$img(src = 'fire-danger-preview-2.png', height = '160px', class = 'center')
+  div(id = 'pagewrap', # does not appear to work for now
+    fluidRow( 
+      uiOutput('days'), tags$hr()
     ),
-    column(5,
-           div(class = 'center', style = 'padding-top: 30px;',
-               selectInput('location', 'Nearest Town', selectize = T, width = '100%',
-                           choices = town_lu, 
-                           selected = TOWN_DEFAULT)
-               )
-           )
-  ),
-  fluidRow(div(
-    style = 'padding: 10px;',
-    tags$hr(),
-    h3("Daily Variation"),
-    plotOutput('daily', height = 100)
-  )),
-  fluidRow(
-      uiOutput('fdr_images')
+    fluidRow(
+      column(7,
+             # https://emergencyprepare.com.au/wp-content/uploads/2018/10/fire-danger-preview-2.png
+             tags$img(src = 'fire-danger-preview-2.png', height = '160px', class = 'center')
+      ),
+      column(5,
+             div(class = 'center', style = 'padding-top: 30px;',
+                 selectInput('location', 'Nearest Town', selectize = T, width = '100%',
+                             choices = town_lu, 
+                             selected = TOWN_DEFAULT)
+                 )
+             )
     ),
-  fluidRow(
-      uiOutput('current_incidents')
-  ),
-  fluidRow(
-    div(style = 'padding: 30px;',
-           tags$hr(),
-           uiOutput('sources')
-           )
-    #textOutput('isItMobile'),
-    #c3Output('test')
-  ),
-  fluidRow(
-    div(style = 'padding: 30px;',
+    fluidRow(div(
+      style = 'padding: 10px;',
+      tags$hr(),
+      h3("Daily Variation"),
+      plotOutput('daily', height = 100)
+    )),
+    fluidRow(
+        uiOutput('fdr_images')
+      ),
+    fluidRow(
+        uiOutput('current_incidents')
+    ),
+    fluidRow(
+      div(style = 'padding: 30px;',
+             tags$hr(),
+             uiOutput('sources')
+             )
+      #textOutput('isItMobile'),
+      #c3Output('test')
+    ),
+    fluidRow(
+      div(style = 'padding: 30px;',
+          tags$hr(),
+          includeMarkdown('about.md')
+      )
+    ),
+    fluidRow(
+      div(style = 'padding: 30px;',
         tags$hr(),
-        includeMarkdown('about.md'),
+        box(solidHeader = TRUE, background = 'black', width = 12,
+          h3('Warning'),
+          p('This application ', tags$b('DOES NOT'), 
+            ', and is not, intended to replace the official ',
+            tags$a(href = 'https://www.cfa.vic.gov.au/warnings-restrictions/total-fire-bans-and-ratings', 'CFA'),
+            ' and ',
+            tags$a(href = 'https://www.emergency.vic.gov.au/respond/', 'VIC Emergency'),
+            ' websites. These sites should remain your primary sources of information. ',
+            'This application mearly gives a rapid overview.')
+        ),
         tags$hr()
+      )
+    )
   )
-)))
+))
 
 server <- function(input, output, session) {
   
@@ -144,6 +162,11 @@ server <- function(input, output, session) {
   # output$isItMobile <- renderText({
   #   ifelse(input$isMobile, "You are on a mobile device", "You are not on a mobile device")
   # })
+  observe({
+    if (input$isMobile) {
+      includeCSS('css/page_style.css')
+    }
+  })
 
   dat <- reactiveValues(df = data.frame(),
                         wind = data.frame(),

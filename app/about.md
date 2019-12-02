@@ -26,6 +26,4 @@ Data is aggregated by location, usually a town or area. Around 1200 locations ar
 Source code for this application is available via [Github](https://github.com/mrjoh3/fdr). If you have any issues or suggestions for new features please log an issue [here](https://github.com/mrjoh3/fdr/issues).
 
 
-### WARNING
 
-This application __DOES NOT__, and is not, intended to replace the official [CFA](https://www.cfa.vic.gov.au/warnings-restrictions/total-fire-bans-and-ratings) and [VIC Emergency](https://www.emergency.vic.gov.au/respond/) websites. These sites should remain your primary sources of information. This application mearly gives a rapid overview.
