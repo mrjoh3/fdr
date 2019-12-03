@@ -406,6 +406,14 @@ fdr_images <- function(mobile){
 
 render_current <- function(statewide, towns, location, buffer = 40) {
   
+  sheep_wind <- statewide %>%
+    filter(category2 == 'Sheep Grazier Warning',
+           category2 == 'Strong Wind')
+  
+  statewide <- statewide %>%
+    filter(category2 != 'Sheep Grazier Warning',
+           category2 != 'Strong Wind') # have overlapping geometry might need to separate before join (could be same for wind warning???)
+  
   sel <- towns %>% filter(town_val == location) %>% 
     st_transform(3111)
   
@@ -442,7 +450,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
     
     # warnings
     wn <- cur %>% 
-      filter(feedType == 'warning' | status == 'warning') %>% 
+      filter(feedType == 'warning' | status %in% c('warning','Warning')) %>% 
       select(status, type = sourceTitle, location, dist)
     
     # incidents
@@ -564,7 +572,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
         div(style = 'padding: 30px;',
             tags$hr(),
             h3(glue('Current Situation {buffer} km')),
-            map,
+            if (nrow(inc) > 0 | nrow(ba) > 0) {map} else {tags$br()},
             tags$br(),
             do.call(tabsetPanel, cs),
             tags$br(),

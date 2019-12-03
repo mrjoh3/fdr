@@ -40,8 +40,6 @@ statewide = st_read('https://www.emergency.vic.gov.au/public/osom-geojson.json',
   st_transform(3111) %>%
   mutate(sizeFmt = as.character(sizeFmt),
          sizeFmt = ifelse(sizeFmt == 'character(0)', '', sizeFmt)) %>%
-  filter(category2 != 'Sheep Grazier Warning',
-         category2 != 'Strong Wind') %>% # have overlapping geometry might need to separate before join (could be same for wind warning???)
   st_make_valid() %>%
   select(sourceId,
          feedType,
@@ -143,12 +141,12 @@ ui <- shinyUI(fluidPage(
         box(solidHeader = TRUE, background = 'black', width = 12,
           h3('Warning'),
           p('This application ', tags$b('DOES NOT'), 
-            ', and is not, intended to replace the official ',
+            ' replace the official ',
             tags$a(href = 'https://www.cfa.vic.gov.au/warnings-restrictions/total-fire-bans-and-ratings', 'CFA'),
             ' and ',
             tags$a(href = 'https://www.emergency.vic.gov.au/respond/', 'VIC Emergency'),
             ' websites. These sites should remain your primary sources of information. ',
-            'This application mearly gives a rapid overview.')
+            'This application mearly gives a rapid overview of current information.')
         ),
         tags$hr()
       )
