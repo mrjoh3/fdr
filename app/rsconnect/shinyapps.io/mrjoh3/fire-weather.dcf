@@ -5,9 +5,9 @@ account: mrjoh3
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1409882
-bundleId: 2630023
+bundleId: 2635430
 url: https://mrjoh3.shinyapps.io/fire-weather/
-when: 1575205107.7088
+when: 1575366037.66456
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: precis.R
