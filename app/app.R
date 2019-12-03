@@ -161,8 +161,8 @@ server <- function(input, output, session) {
   #   ifelse(input$isMobile, "You are on a mobile device", "You are not on a mobile device")
   # })
   observe({
-    if (input$isMobile) {
-      includeCSS('css/page_style.css')
+    if (!(input$isMobile)) {
+      includeCSS('www/css/page_style.css')
     }
   })
 
