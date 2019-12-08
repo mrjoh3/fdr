@@ -27,8 +27,9 @@ library(leaflet)
 
 source('utils.R')
 towns <- readRDS('towns.rds')
-
-TOWN_DEFAULT = 'st-andrews'
+print('start')
+TOWN_DEFAULT <- 'st-andrews'
+APP_TITLE <- 'Fire Weather'
 
 cfa__lu <- gsub(' ', '', tolower(unique(towns$cfa_tfb))) %>% as.list() %>%
   setNames(unique(towns$cfa_tfb))
@@ -67,14 +68,14 @@ fontawesomeDep <- htmltools::htmlDependency("fontawesome", "5.9.0",
 #precis_w <- get_precis_forecast('VIC')
 
 ui <- shinyUI(fluidPage(
-  title = 'FDR Weather',
+  title = APP_TITLE,
   #responsive = TRUE,
   theme = shinytheme("superhero"),
   header = NULL,
   useShinydashboard(),
   mobileDetect('isMobile'),
   tags$div(style = 'text-align: center;',
-    h1('FDR Weather', icon('fire', class = 'orange')),
+    h1(APP_TITLE, icon('fire', class = 'orange')),
     h5(textOutput('subtitle')),
     tags$hr()
     ),
@@ -105,7 +106,8 @@ ui <- shinyUI(fluidPage(
              div(class = 'center', style = 'padding-top: 30px;',
                  selectInput('location', 'Nearest Town', selectize = T, width = '100%',
                              choices = town_lu, 
-                             selected = TOWN_DEFAULT)
+                             selected = TOWN_DEFAULT
+                             )
                  )
              )
     ),
@@ -174,31 +176,36 @@ server <- function(input, output, session) {
                         surl = as.character(),
                         load = TRUE)
   
-  observe({    # check for url parameters
+  location <- eventReactive(input$location, {    # check for url parameters
       
-      print(1)
+      print('location(1)')
       
-      location <- input$location
       query <- parseQueryString(session$clientData$url_search)
       
       if (!is.null(query[['location']]) & dat$load) {
-        location <- query[['location']]
-        updateSelectInput(session, "location", 
-                          choices = town_lu, 
-                          selected = query[['location']])
+        loc <- query[['location']]
+        isolate(
+        updateSelectInput(session, "location",
+                          choices = town_lu,
+                          selected = query[['location']])  # might cause run twice TEST
+        )
         print('into if')
         isolate({dat$load <- FALSE})
+      } else {
+        loc = input$location
       }
       
-      isolate({dat$location = location})
+      return(loc)
       
-    }, priority = 2)
+    }, ignoreNULL = FALSE)
   
+  
+  # set cfa region
   observe({
     
-    print(2)
+    print('cfa_region(1)')
     
-    cfa_region <- filter(towns, town_val == dat$location) %>% 
+    cfa_region <- filter(towns, town_val == location()) %>% 
       pull(cfa_tfb) %>%
       tolower() %>%
       gsub(' ', '', .)
@@ -206,33 +213,36 @@ server <- function(input, output, session) {
     
   }, priority = 1)
   
+  # set subtitle content
   observe({
-    print(5)
+    
+    print('subtitle(3)')
+    
     output$subtitle <- renderText({
-      #print(dat$location)
-      glue('{tools::toTitleCase(gsub("-"," ", dat$location))} is in the {tools::toTitleCase(dat$cfa)} Total Fire Ban District')
+      #print(location())
+      glue('{tools::toTitleCase(gsub("-"," ", location()))} is in the {tools::toTitleCase(dat$cfa)} Total Fire Ban District')
     })
 
   }, priority = 3)
   
   # watch button to update qry and get new location
-  observeEvent(input$location, {
-    print(4)
-    isolate({dat$location = input$location})
-  }, ignoreInit = TRUE, priority = 3)
+  # observeEvent(input$location, {
+  #   print(4)
+  #   isolate({location() = input$location})
+  # }, ignoreInit = TRUE, priority = 3)
   
 
   
   # get data 
   observe({
     
-    print(3)
+    print('data(0)')
     
     withProgress(message = 'Loading', value = 0.1, {
       
       # define and check urls exist
-      wurl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/detailed/') # 3hr detailed forecast
-      surl <- glue('http://www.bom.gov.au/places/vic/{dat$location}/forecast/') # simple forecast
+      wurl <- glue('http://www.bom.gov.au/places/vic/{location()}/forecast/detailed/') # 3hr detailed forecast
+      surl <- glue('http://www.bom.gov.au/places/vic/{location()}/forecast/') # simple forecast
       furl <- glue('https://www.cfa.vic.gov.au/documents/50956/50964/{dat$cfa}-firedistrict_rss.xml') # cfa tfb district forecast
       
       # test location available
@@ -292,7 +302,7 @@ server <- function(input, output, session) {
         incProgress(1, 'Something Went Wrong')
         
         print('location not found')
-        print(dat$location)
+        print(location())
         shinyalert(title = 'Error', 
                    text = 'The entered location could not be found',
                    type = 'error'
@@ -309,7 +319,7 @@ server <- function(input, output, session) {
   # render charts and panels
   observe({
     
-    print(6)
+    print('charts(-1)')
     
     withProgress(message = 'Rendering', value = 0.1, {
       
@@ -320,7 +330,7 @@ server <- function(input, output, session) {
       Map(function(n){
         label <- dat$df[['date']][n]
         cats <- unique(dat$wind$meas)
-        c3_grid_server(input, output, session, dat$wind, label, dat$location, cats)
+        c3_grid_server(input, output, session, dat$wind, label, location(), cats)
       }, 1:nrow(dat$df))
       
       incProgress(.50, 'Render Charts')
@@ -420,7 +430,7 @@ server <- function(input, output, session) {
             column(
               width = 6,
               #plotOutput(glue('plot{n}'))
-              c3_grid_UI(r$date, dat$location, unique(dat$wind$meas))
+              c3_grid_UI(r$date, location(), unique(dat$wind$meas))
             ))
         )
         
@@ -468,7 +478,7 @@ server <- function(input, output, session) {
       
       output$current_incidents <- renderUI({
         
-        render_current(statewide, towns, dat$location, buffer = 30)
+        render_current(statewide, towns, location(), buffer = 30)
         
       })
       
