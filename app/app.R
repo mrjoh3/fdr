@@ -121,7 +121,11 @@ ui <- shinyUI(fluidPage(
         uiOutput('fdr_images')
       ),
     fluidRow(
-        uiOutput('current_incidents')
+      div(style = 'padding: 30px;',
+          tags$hr(),
+          h3(textOutput('current_title')),
+          sliderInput('buffer', label = 'Distance', value = 20, min = 10, max = 50, step = 10, width = '100%'),
+          uiOutput('current_incidents'))
     ),
     fluidRow(
       div(style = 'padding: 30px;',
@@ -478,8 +482,12 @@ server <- function(input, output, session) {
       
       output$current_incidents <- renderUI({
         
-        render_current(statewide, towns, location(), buffer = 30)
+        render_current(statewide, towns, location(), buffer = input$buffer)
         
+      })
+      
+      output$current_title <- renderText({
+        glue('Current Situation {input$buffer} km')
       })
       
       incProgress(.05, 'Data Sources')

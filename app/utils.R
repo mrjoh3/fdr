@@ -570,15 +570,11 @@ render_current <- function(statewide, towns, location, buffer = 40) {
     
     return(
       tagList(
-        div(style = 'padding: 30px;',
-            tags$hr(),
-            h3(glue('Current Situation {buffer} km')),
             if (nrow(inc) > 0 | nrow(ba) > 0) {map} else {tags$br()},
             tags$br(),
             do.call(tabsetPanel, cs),
             tags$br(),
             warnBox
-        )
       )
     )
     
