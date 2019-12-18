@@ -455,7 +455,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
     
     # incidents
     inc <- cur %>% 
-      filter(feedType == 'incident', 
+      filter(feedType %in% c('incident','earthquake'), 
              category2 != 'Total Fire Ban',
              category1 != 'Met',
              status != 'warning') %>% 
@@ -498,6 +498,7 @@ render_current <- function(statewide, towns, location, buffer = 40) {
       `Hazardous Material` = makeAwesomeIcon(icon= 'nuclear', markerColor = 'black', iconColor = '#FFFFFF', library = "ion"),
       Rescue = makeAwesomeIcon(icon= 'first-aid', markerColor = 'darkgreen', iconColor = '#FFFFFF', library = "fa"),
       Flooding = makeAwesomeIcon(icon= 'tiny', markerColor = 'darkblue', iconColor = '#FFFFFF', library = "fa"),
+      Earthquake = makeAwesomeIcon(icon= 'podium', markerColor = 'darkblue', iconColor = '#FFFFFF', library = "ion"),
       Other = makeAwesomeIcon(icon= 'question-circle', markerColor = 'purple', iconColor = '#FFFFFF', library = "fa")
     )
     
