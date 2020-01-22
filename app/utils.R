@@ -305,7 +305,7 @@ fdr_colour <- c('LOW-MODERATE' = '#79c141',
 
 calc_fdi <- function(df, mobile = FALSE){
   
-  df %>% 
+  daily <- df %>% 
     filter(meas %in% c('Relative humidity (%)',
                        'Air temperature (°C)',
                        'Wind speed  km/h',
@@ -330,10 +330,12 @@ calc_fdi <- function(df, mobile = FALSE){
     filter(!(is.na(now) & is.na(fdi))) %>% 
     mutate(cnk = ifelse(fdr != lead(fdr, 1), time, NA)) %>%
     fill(cnk, .direction = 'up') %>% 
-    mutate(cnk = ifelse(is.na(cnk), max(cnk, na.rm = T) + 999, cnk)) %>%  # last cnk always NA if long too much missing data
+    mutate(cnk = ifelse(is.na(cnk), max(cnk, na.rm = T) + 999, cnk))  # last cnk always NA if long too much missing data
       # ggplot(data = ., aes(x = t2, ymax = fdi, ymin = 0, group = cnk, fill = fdr)) +
       #   geom_ribbon()
       # ggplot(data=dat3, aes(x=date, ymax=count, ymin=0, group=df, fill=month)) + geom_ribbon()
+    
+  daily %>%
     group_by(cnk, fdr) %>% 
     summarise(xmin = min(time),
               xmax = max(time),
@@ -346,17 +348,21 @@ calc_fdi <- function(df, mobile = FALSE){
                           xmax), # catch mising last value
            fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>%
     ggplot() +
-      geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = fdr)) +
+      geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 150, fill = fdr)) +
+      geom_area(data = daily, stat = 'identity', aes(x = time, y = fdi), alpha = .2) +
       scale_color_manual(values = fdr_colour,
                          aesthetics = c("colour", "fill")) +
+      #scale_y_sqrt() +
+      #xlim(min(daily$time), as.POSIXct('2020-01-15 00:00:00')) + # breaks geom rects so backgound colour drops
       theme_minimal() +
     theme(axis.line=element_blank(),
-          axis.text=element_text(colour = "lightgrey", 
-                                 size = ifelse(mobile, 30, 14)),
-          axis.text.y=element_blank(),
+          axis.text.x=element_text(colour = "lightgrey", 
+                                   size = ifelse(mobile, 30, 14)),
+          axis.text.y=element_text(colour = "lightgrey",
+                                   size = ifelse(mobile, 14, 8)),
           axis.ticks.y=element_blank(),
           #axis.ticks.x = element_line(),
-          #axis.title.x=element_blank(),
+          axis.title.x=element_blank(),
           axis.title.y=element_blank(),
           legend.position="none",
           panel.background = element_rect(fill = "transparent", colour = NA),
@@ -405,17 +411,24 @@ fdr_images <- function(mobile){
 
 
 render_current <- function(statewide, towns, location, buffer = 40) {
-  
-  sheep_wind <- statewide %>%
-    filter(category2 == 'Sheep Grazier Warning',
-           category2 == 'Strong Wind')
-  
-  statewide <- statewide %>%
-    filter(category2 != 'Sheep Grazier Warning',
-           category2 != 'Strong Wind') # have overlapping geometry might need to separate before join (could be same for wind warning???)
-  
+    
   sel <- towns %>% filter(town_val == location) %>% 
     st_transform(3111)
+  
+  splt <- c('Sheep Grazier Warning',
+            'Strong Wind',
+            #'Total Fire Ban',
+            'Weather',
+            'Met')
+  
+  # miscelaneous warnings
+  sheep_wind <- statewide %>%
+    filter(category2 %in% splt) # need way to use these
+  
+  statewide <- statewide %>%
+    filter(!(category2 %in% splt)) # have overlapping geometry might need to separate before join (could be same for wind warning???)
+  
+
   
   # current situation within 20km
   cur = sel %>% st_buffer(dist = buffer * 1000) %>% 
