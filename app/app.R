@@ -152,7 +152,7 @@ ui <- shinyUI(fluidPage(
             ' and ',
             tags$a(href = 'https://www.emergency.vic.gov.au/respond/', 'VIC Emergency'),
             ' websites. These sites should remain your primary sources of information. ',
-            'This application mearly gives a rapid overview of current information.')
+            'This application merely gives a rapid overview of current information.')
         ),
         tags$hr()
       )
