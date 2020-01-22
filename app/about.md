@@ -18,6 +18,10 @@ The primary audience is CFA brigade duty officers but the data will likely be us
 
 #### Location
 
+Location can be set by URL parameters or dropdown list. To set location via URL add `?location=YOUR-TOWN` to the base url. For example:
+  * https://mrjoh3.shinyapps.io/fire-weather/?location=mildura
+  * https://mrjoh3.shinyapps.io/fire-weather/?location=panton-hill
+
 Data is aggregated by location, usually a town or area. Around 1200 locations are available across Victoria, these are either regional [towns](https://www.data.gov.au/dataset/ds-dga-bdcf5b09-89bc-47ec-9281-6b8e9ee147aa/distribution/dist-dga-53c24b8e-4f55-4eed-a189-2fc0dcca6381/details?q=) or [CFA Brigades](https://discover.data.vic.gov.au/dataset/cfa-fire-station-vmfeat-geomark_point).
 
 
