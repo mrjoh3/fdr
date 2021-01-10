@@ -439,11 +439,11 @@ server <- function(input, output, session) {
             ))
         )
         
-        tags$div(class="panel panel-default",
-                 tags$div(class="panel-heading", role="tab", id=glue("heading{n}"), #header div
-                          style = glue('background-color: {r$fdr_color};'),
-                          tags$h5(class="panel-title",
-                                  style=glue("color: {sequential(splitComp(r$fdr_color, plot = FALSE)[2], plot = FALSE, percentage = 10, what = 'value')[6]};"),
+        tags$div(class=glue("{str_replace_all(tolower(r$title), ' ', '-')} panel panel-default"),
+                 tags$div(class=glue("{str_replace_all(tolower(r$title), ' ', '-')} panel-heading"), role="tab", id=glue("heading{n}"), #header div
+                          #style = glue('background-color: {r$fdr_color};'),
+                          tags$h5(class=glue("panel-title {str_replace_all(tolower(r$title), ' ', '-')}"),
+                                  #style=glue("color: {sequential(splitComp(r$fdr_color, plot = FALSE)[2], plot = FALSE, percentage = 10, what = 'value')[6]};"),
                                   tags$a(role="button", `data-toggle`="collapse", `data-parent`="#accordion", href=glue("#collapse{n}"), `aria-expanded`="false", `aria-controls`=glue("collapse{n}"),
                                          fluidRow(
                                            column(6, r$item_title),

@@ -25,3 +25,64 @@
   font-weight: bold;
 }
 
+
+.row {
+  padding: 8px;
+}
+
+.panel-heading {
+  padding: 0;
+}
+
+
+.code-red {
+  background-color: #710d08;
+  color: white;
+}
+.extreme {
+  background-color: #ee2e24;
+  color: white;
+}
+.severe {
+  background-color: #f89829;
+  color: white;
+}
+.very-high {
+  background-color: #fff002;
+  color: black;
+}
+.high {
+  background-color: #00adef;
+  color: black;
+}
+.low-moderate {
+  background-color: #79c141;
+  color: black;
+}
+
+@media (prefers-color-scheme: dark) {
+  .code-red {
+  background-color: #710d08;
+  color: white;
+}
+.extreme {
+  background-color: #ee2e24;
+  color: white;
+}
+.severe {
+  background-color: #f89829;
+  color: white;
+}
+.very-high {
+  background-color: #fff002;
+  color: black;
+}
+.high {
+  background-color: #00adef;
+  color: black;
+}
+.low-moderate {
+  background-color: #79c141;
+  color: black;
+}
+}
