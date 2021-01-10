@@ -41,6 +41,7 @@ statewide <- st_read('https://www.emergency.vic.gov.au/public/osom-geojson.json'
   st_transform(3111) %>%
   mutate(sizeFmt = as.character(sizeFmt),
          sizeFmt = ifelse(sizeFmt == 'character(0)', '', sizeFmt)) %>%
+  filter(!is.na(st_is_valid(.))) %>%
   st_make_valid() %>%
   select(sourceId,
          feedType,
