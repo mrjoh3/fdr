@@ -261,7 +261,7 @@ get_detailed <- function(url){
 get_fdr <- function(url){
   
   url %>%
-    tidyfeed(.) %>%
+    tidyfeed(., clean_tags = FALSE) %>%
     mutate(item_title = gsub('Today, |Tomorrow, ', '', item_title),
            date = as.Date(item_title, '%a, %d %b %Y'),
            title = str_extract(item_description, 'LOW-MODERATE|HIGH|VERY HIGH|SEVERE|EXTREME|CODE RED'),
