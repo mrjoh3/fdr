@@ -266,7 +266,7 @@ server <- function(input, output, session) {
         # cfa fire danger ratings forecast
         df <- get_fdr(furl)
         
-        # merge fdr and forecast
+        # merge fdr and forecast (TODO: change to full_join as in non fdp fdr only for current day, then need to fill required missing fields)
         df <- left_join(df, fc, by = 'date')
         
         incProgress(.30, '3hr Weather Forecast')
