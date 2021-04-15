@@ -104,13 +104,14 @@ c3_grid_server <- function(input, output, session, wind, label, location, cats){
 
 get_precis <- function(url){
   
-  doc <- read_html(url) 
+  site <- GET(url, httr::user_agent("Mozilla/5.0 (Windows NT 5.1; rv:66.0) Gecko/20100101 Firefox/66.0")) 
+  doc <- content(site, 'text') %>% read_html() 
   
   days <- doc %>%
     html_nodes('.day')
   
   forcast_datetime <- doc %>% html_node('.date') %>% html_text() %>%
-    as.POSIXct(., format = "Forecast issued at %I:%M %p AEDT on %a %d %b %Y", tz = 'AEDT')
+    as.POSIXct(., format = "Forecast issued at %I:%M %p AEST on %a %d %b %Y", tz = 'AEST') # AEDT is for daylight saving
   forcast_date <- as.Date(forcast_datetime)
   
   dates <- seq(forcast_date, length.out = length(days), by = 1)
@@ -177,10 +178,11 @@ get_precis <- function(url){
 
 get_latest <- function(url){
   
-  doc <- read_html(url)
+  site <- GET(url, httr::user_agent("Mozilla/5.0 (Windows NT 5.1; rv:66.0) Gecko/20100101 Firefox/66.0")) 
+  doc <- content(site, 'text') %>% read_html() 
   
   dt <- doc %>% html_nodes('h2.pointer span') %>% html_text() %>%
-    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.', tz = 'AEDT')
+    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.', tz = 'AEST')
   
   tbls <- doc %>% html_table()
   tdy <- tbls[[3]]
@@ -190,7 +192,7 @@ get_latest <- function(url){
   # add date
   tdy %>%
     mutate(date = as.Date(dt),
-           time = as.POSIXct(glue('{date} {`Time (AEDT)`}'), format = '%Y-%m-%d %I:%M %p', tz = 'AEDT'),
+           time = as.POSIXct(glue('{date} {`Time (AEST)`}'), format = '%Y-%m-%d %I:%M %p', tz = 'AEST'),
            now = dt) %>%
     select(date, time, now,
            `Air temperature (°C)` = `Temp (°C)`,
@@ -210,7 +212,9 @@ get_latest <- function(url){
 
 get_detailed <- function(url){
   
-  tbls <- read_html(url) %>%
+  site <- GET(url, httr::user_agent("Mozilla/5.0 (Windows NT 5.1; rv:66.0) Gecko/20100101 Firefox/66.0")) 
+  tbls <- content(site, 'text') %>% 
+    read_html() %>%
     html_table() 
 
   n_tbls <- ifelse(length(tbls)%%5 == 0, 5, 6)
@@ -344,7 +348,7 @@ calc_fdi <- function(df, mobile = FALSE){
     mutate(xmax = lead(xmin, 1), 
            xmax = if_else(is.na(xmax),
                           #as.POSIXct(glue('{as.Date(xmin) + days(1)} 00:00"))'), tz = 'AEDT'), 
-                          as.POSIXct(max(df$time), tz = 'AEDT'), 
+                          as.POSIXct(max(df$time), tz = 'AEST'), 
                           xmax), # catch mising last value
            fdr = factor(fdr, levels = rev(names(fdr_colour)))) %>%
     ggplot() +
