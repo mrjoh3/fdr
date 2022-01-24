@@ -102,7 +102,7 @@ c3_grid_server <- function(input, output, session, wind, label, location, cats){
 }
 
 
-get_precis <- function(url){
+get_precis <- function(url, tz = 'AEDT'){
   
   site <- GET(url, httr::user_agent("Mozilla/5.0 (Windows NT 5.1; rv:66.0) Gecko/20100101 Firefox/66.0")) 
   doc <- content(site, 'text') %>% read_html() 
@@ -111,7 +111,7 @@ get_precis <- function(url){
     html_nodes('.day')
   
   forcast_datetime <- doc %>% html_node('.date') %>% html_text() %>%
-    as.POSIXct(., format = "Forecast issued at %I:%M %p AEST on %a %d %b %Y", tz = 'AEST') # AEDT is for daylight saving
+    as.POSIXct(., format = glue("Forecast issued at %I:%M %p {tz} on %a %d %b %Y"), tz = tz) # AEDT is for daylight saving
   forcast_date <- as.Date(forcast_datetime)
   
   dates <- seq(forcast_date, length.out = length(days), by = 1)
@@ -176,13 +176,13 @@ get_precis <- function(url){
 }
 
 
-get_latest <- function(url){
+get_latest <- function(url, tz = 'AEDT'){
   
   site <- GET(url, httr::user_agent("Mozilla/5.0 (Windows NT 5.1; rv:66.0) Gecko/20100101 Firefox/66.0")) 
   doc <- content(site, 'text') %>% read_html() 
   
   dt <- doc %>% html_nodes('h2.pointer span') %>% html_text() %>%
-    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.', tz = 'AEST')
+    as.POSIXct(., format = 'at %I:%M%p, %a %d %b %Y.', tz = tz)
   
   tbls <- doc %>% html_table()
   tdy <- tbls[[3]]
@@ -191,8 +191,9 @@ get_latest <- function(url){
   
   # add date
   tdy %>%
+    dplyr::rename_with(~ 'Time', starts_with('Time')) %>%
     mutate(date = as.Date(dt),
-           time = as.POSIXct(glue('{date} {`Time (AEST)`}'), format = '%Y-%m-%d %I:%M %p', tz = 'AEST'),
+           time = as.POSIXct(glue('{date} {Time}'), format = '%Y-%m-%d %I:%M %p', tz = tz),
            now = dt) %>%
     select(date, time, now,
            `Air temperature (°C)` = `Temp (°C)`,
@@ -210,7 +211,7 @@ get_latest <- function(url){
 }
 
 
-get_detailed <- function(url){
+get_detailed <- function(url, tz = 'AEDT'){
   
   site <- GET(url, httr::user_agent("Mozilla/5.0 (Windows NT 5.1; rv:66.0) Gecko/20100101 Firefox/66.0")) 
   tbls <- content(site, 'text') %>% 
@@ -242,7 +243,7 @@ get_detailed <- function(url){
     gather('meas', 'value', -date, -time, -Thunderstorms, -Rain, -`Wind direction`) %>%
     # pivot_wide for all pivot_long for numeric
     mutate(date = as.Date(date),
-           time = lubridate::ymd_hm(glue('{date} {time}', tz = 'AEST')),
+           time = lubridate::ymd_hm(glue('{date} {time}', tz = tz)),
            value = ifelse(value == '–', NA, value),
            value = ifelse(!is.na(value) & meas == 'Wind speed  km/hknots', 
                           substr(value, 1, ceiling(nchar(value)/2)), # need to check this works for higher wind speeds
